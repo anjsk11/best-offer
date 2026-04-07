@@ -1,0 +1,14 @@
+spring:
+  datasource:
+    # 메모리 모드 H2 설정 (DB가 로컬 파일이 아닌 메모리에만 존재), MySQL 모드로
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true # 테스트 디버깅용
+  jpa:
+    hibernate:
+      ddl-auto: create-drop # 테스트 시작 시 테이블 생성, 종료 시 삭제
+    show-sql: true
