@@ -1,3 +1,8 @@
 spring:
   application:
     name: best-offer
+
+  datasource:
+    url: jdbc:mysql://${RDS_HOSTNAME}:3306/${RDS_DB_NAME}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: ${RDS_USERNAME}
+    password: ${RDS_PASSWORD}
