@@ -1,5 +1,5 @@
-# 자바 21이 설치된 가벼운 리눅스
-FROM openjdk:21-jdk-slim
+# 자바 21이 설치된 가벼운 리눅스 환경
+FROM eclipse-temurin:21-jre-jammy
 
 # 빌드된 jar 파일을 컨테이너 내부로 복사
 ARG JAR_FILE=target/*.jar
