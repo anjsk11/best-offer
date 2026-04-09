@@ -1,5 +1,7 @@
 package me.anjsk.bestoffer.controller;
 
+import jakarta.servlet.http.HttpSession;
+import me.anjsk.bestoffer.dto.LoginRequest;
 import me.anjsk.bestoffer.dto.SignupRequest;
 import me.anjsk.bestoffer.service.UserService;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +23,14 @@ public class UserController {
     @PostMapping("/signup")
     public ResponseEntity<String> signup(@RequestBody SignupRequest request) {
         userService.signup(request);
-        return ResponseEntity.ok("회원가입이 완료되었습니다.");
+        return ResponseEntity
+                .ok("회원가입이 완료되었습니다.");
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<String> login(@RequestBody LoginRequest request, HttpSession session) {
+        userService.login(request, session);
+        return ResponseEntity
+                .ok("로그인이 성공적으로 완료되었습니다.");
     }
 }

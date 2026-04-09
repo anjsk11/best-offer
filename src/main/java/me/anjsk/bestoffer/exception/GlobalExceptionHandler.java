@@ -14,6 +14,13 @@ public class GlobalExceptionHandler {
                 .body("이미 사용 중인 이메일입니다. 다른 이메일을 입력해주세요.");
     }
 
+    @ExceptionHandler(LoginFailedException.class)
+    public ResponseEntity<String> handleLoginFailedException() {
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED) // 401 Unauthorized
+                .body("아이디 또는 비밀번호가 잘못되었습니다.");
+    }
+
     // 그 외 예상치 못한 모든 예외 처리
     @ExceptionHandler(Exception.class)
     public ResponseEntity<String> handleAllException(Exception e) {
