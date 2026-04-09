@@ -54,7 +54,7 @@ class UserServiceTest {
     // ==========================================
 
     @Test
-    @DisplayName("회원가입 성공 - 유저 정보 저장")
+    @DisplayName("회원가입 성공")
     void signup_Success() {
         // 중복된 이메일이 없다고 가정 (Empty Optional 반환)
         given(userRepository.findByEmail(signupRequest.getEmail()))
@@ -103,7 +103,7 @@ class UserServiceTest {
     // ==========================================
 
     @Test
-    @DisplayName("로그인 성공 - 세션에 정보 저장")
+    @DisplayName("로그인 성공")
     void login_Success() {
 
         given(userRepository.findByEmail(loginRequest.getEmail())).willReturn(Optional.of(testUser));

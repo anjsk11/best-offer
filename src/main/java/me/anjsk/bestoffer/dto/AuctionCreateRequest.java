@@ -10,6 +10,13 @@ public class AuctionCreateRequest {
 
     protected AuctionCreateRequest() {}
 
+    public AuctionCreateRequest(String title, String description, Long startPrice, LocalDateTime endTime) {
+        this.title = title;
+        this.description = description;
+        this.startPrice = startPrice;
+        this.endTime = endTime;
+    }
+
     public String getTitle() { return title; }
     public String getDescription() { return description; }
     public Long getStartPrice() { return startPrice; }
