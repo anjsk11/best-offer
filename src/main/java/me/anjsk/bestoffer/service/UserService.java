@@ -3,6 +3,7 @@ package me.anjsk.bestoffer.service;
 import me.anjsk.bestoffer.domain.User;
 import me.anjsk.bestoffer.domain.enums.UserRole;
 import me.anjsk.bestoffer.dto.SignupRequest;
+import me.anjsk.bestoffer.exception.DuplicateEmailException;
 import me.anjsk.bestoffer.repository.UserRepository;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -40,7 +41,7 @@ public class UserService {
     private void validateDuplicateEmail(String email) {
         userRepository.findByEmail(email)
                 .ifPresent(user -> {
-                    throw new IllegalStateException("이미 가입된 이메일입니다.");
+                    throw new DuplicateEmailException();
                 });
     }
 }
