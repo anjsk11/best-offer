@@ -3,6 +3,7 @@ package me.anjsk.bestoffer.domain;
 import jakarta.persistence.*;
 import me.anjsk.bestoffer.domain.enums.UserRole;
 import me.anjsk.bestoffer.domain.enums.UserStatus;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -55,9 +56,11 @@ public class User {
 
     // Getter
     public Long getId() { return id; }
+    public String getPassword() { return password; }
     public String getEmail() { return email; }
     public String getNickname() { return nickname; }
     public UserRole getRole() { return role; }
     public UserStatus getStatus() { return status; }
     public LocalDateTime getCreatedDate() { return createdDate; }
+    public LocalDateTime getModifiedDate() { return modifiedDate; }
 }
