@@ -1,9 +1,12 @@
 package me.anjsk.bestoffer.service;
 
+import jakarta.servlet.http.HttpSession;
 import me.anjsk.bestoffer.domain.User;
 import me.anjsk.bestoffer.domain.enums.UserRole;
+import me.anjsk.bestoffer.dto.LoginRequest;
 import me.anjsk.bestoffer.dto.SignupRequest;
 import me.anjsk.bestoffer.exception.DuplicateEmailException;
+import me.anjsk.bestoffer.exception.LoginFailedException;
 import me.anjsk.bestoffer.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -24,31 +27,40 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
 
-    @Mock
-    private UserRepository userRepository;
-
-    @Mock
-    private BCryptPasswordEncoder passwordEncoder;
+    @Mock private UserRepository userRepository;
+    @Mock private BCryptPasswordEncoder passwordEncoder;
+    @Mock private HttpSession session;      // 세션도 Mock으로 만든다
 
     @InjectMocks // Mock들을 UserService에 주입
     private UserService userService;
 
     // 테스트 데이터 준비
     private SignupRequest signupRequest;
+    private LoginRequest loginRequest;
+    private User testUser;
 
     @BeforeEach
     void setUp() {
+        // 회원가입용 데이터
         signupRequest = new SignupRequest("test@test.com", "password123", "테스터");
+
+        // 로그인 테스트용 데이터
+        loginRequest = new LoginRequest("test@test.com", "password123");
+        testUser = new User("test@test.com", "encoded_password", "테스터", UserRole.ROLE_USER);
     }
 
+    // ==========================================
+    // 회원가입 (Signup) 테스트
+    // ==========================================
+
     @Test
-    @DisplayName("회원가입 성공")
+    @DisplayName("회원가입 성공 - 유저 정보 저장")
     void signup_Success() {
         // 중복된 이메일이 없다고 가정 (Empty Optional 반환)
         given(userRepository.findByEmail(signupRequest.getEmail()))
                 .willReturn(Optional.empty());
 
-        // 비밀번호 암호화 결과 설정
+        // 비밀번호 암호화 결과 임의 설정
         given(passwordEncoder.encode(signupRequest.getPassword()))
                 .willReturn("encoded_password");
 
@@ -84,5 +96,44 @@ class UserServiceTest {
 
         // 저장이 절대 호출되지 않았는지 확인
         verify(userRepository, never()).save(any(User.class));
+    }
+
+    // ==========================================
+    // 로그인 (Login) 테스트
+    // ==========================================
+
+    @Test
+    @DisplayName("로그인 성공 - 세션에 정보 저장")
+    void login_Success() {
+
+        given(userRepository.findByEmail(loginRequest.getEmail())).willReturn(Optional.of(testUser));
+        given(passwordEncoder.matches(loginRequest.getPassword(), testUser.getPassword())).willReturn(true);
+
+        userService.login(loginRequest, session);
+
+        // 세션에 setAttribute가 정확한 키와 값으로 호출되었는지 검증
+        verify(session, times(1)).setAttribute("LOGIN_USER", testUser.getId());
+        verify(session, times(1)).setAttribute("USER_ROLE", testUser.getRole());
+    }
+
+    @Test
+    @DisplayName("로그인 실패 - 존재하지 않는 이메일")
+    void login_Fail_EmailNotFound() {
+        // Given
+        given(userRepository.findByEmail(loginRequest.getEmail())).willReturn(Optional.empty());
+
+        // When & Then
+        assertThrows(LoginFailedException.class, () -> userService.login(loginRequest, session));
+    }
+
+    @Test
+    @DisplayName("로그인 실패 - 비밀번호 불일치")
+    void login_Fail_WrongPassword() {
+        // Given
+        given(userRepository.findByEmail(loginRequest.getEmail())).willReturn(Optional.of(testUser));
+        given(passwordEncoder.matches(loginRequest.getPassword(), testUser.getPassword())).willReturn(false);
+
+        // When & Then
+        assertThrows(LoginFailedException.class, () -> userService.login(loginRequest, session));
     }
 }
