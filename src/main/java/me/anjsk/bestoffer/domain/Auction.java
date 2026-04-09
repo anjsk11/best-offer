@@ -58,7 +58,10 @@ public class Auction {
     // Getter
     public Long getId() { return id; }
     public String getTitle() { return title; }
+    public String getDescription() { return description; }
+    public Long getStartPrice() { return startPrice; }
     public Long getCurrentPrice() { return currentPrice; }
+    public LocalDateTime getEndTime() { return endTime; }
     public AuctionStatus getStatus() { return status; }
     public User getSeller() { return seller; }
 }
