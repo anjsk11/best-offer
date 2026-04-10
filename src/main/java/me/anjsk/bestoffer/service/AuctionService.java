@@ -1,6 +1,7 @@
 package me.anjsk.bestoffer.service;
 
 import me.anjsk.bestoffer.domain.Auction;
+import me.anjsk.bestoffer.domain.Bid;
 import me.anjsk.bestoffer.domain.User;
 import me.anjsk.bestoffer.dto.AuctionCreateRequest;
 import me.anjsk.bestoffer.dto.AuctionDetailResponse;
@@ -8,6 +9,7 @@ import me.anjsk.bestoffer.dto.AuctionListResponse;
 import me.anjsk.bestoffer.dto.AuctionUpdateRequest;
 import me.anjsk.bestoffer.exception.*;
 import me.anjsk.bestoffer.repository.AuctionRepository;
+import me.anjsk.bestoffer.repository.BidRepository;
 import me.anjsk.bestoffer.repository.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @Transactional
@@ -22,10 +25,12 @@ public class AuctionService {
 
     private final AuctionRepository auctionRepository;
     private final UserRepository userRepository;
+    private final BidRepository bidRepository;
 
-    public AuctionService(AuctionRepository auctionRepository, UserRepository userRepository) {
+    public AuctionService(AuctionRepository auctionRepository, UserRepository userRepository, BidRepository bidRepository) {
         this.auctionRepository = auctionRepository;
         this.userRepository = userRepository;
+        this.bidRepository = bidRepository;
     }
 
     public Long createAuction(AuctionCreateRequest request, Long sellerId) {
@@ -86,7 +91,9 @@ public class AuctionService {
         Auction auction = auctionRepository.findById(auctionId)
                 .orElseThrow(AuctionNotFoundException::new);
 
-        return new AuctionDetailResponse(auction);
+        List<Bid> bids = bidRepository.findBidsWithBidderByAuctionId(auctionId);
+
+        return new AuctionDetailResponse(auction, bids);
     }
 
     // 다건 목록 페이징 조회 (최신순 등은 컨트롤러에서 결정)
