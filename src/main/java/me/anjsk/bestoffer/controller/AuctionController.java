@@ -5,6 +5,7 @@ import me.anjsk.bestoffer.annotation.RequireLogin;
 import me.anjsk.bestoffer.dto.AuctionCreateRequest;
 import me.anjsk.bestoffer.dto.AuctionDetailResponse;
 import me.anjsk.bestoffer.dto.AuctionListResponse;
+import me.anjsk.bestoffer.dto.AuctionUpdateRequest;
 import me.anjsk.bestoffer.service.AuctionService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -37,7 +38,34 @@ public class AuctionController {
                 .body("경매가 성공적으로 등록되었습니다.");
     }
 
-    // 아무나 경매를 조회할 수 있게 로그인이 필요없음을 참고
+    // 경매 수정
+    @PutMapping("/{auctionId}")
+    @RequireLogin
+    public ResponseEntity<String> updateAuction(
+            @PathVariable Long auctionId,
+            @RequestBody AuctionUpdateRequest request,
+            HttpSession session) {
+
+        Long userId = (Long) session.getAttribute("LOGIN_USER");
+        auctionService.updateAuction(auctionId, request, userId);
+
+        return ResponseEntity
+                .ok("경매글이 수정되었습니다.");
+    }
+
+    // 경매 삭제
+    @DeleteMapping("/{auctionId}")
+    @RequireLogin
+    public ResponseEntity<String> deleteAuction(@PathVariable Long auctionId, HttpSession session) {
+
+        Long userId = (Long) session.getAttribute("LOGIN_USER");
+        auctionService.deleteAuction(auctionId, userId);
+
+        return ResponseEntity
+                .ok("경매글이 삭제 처리되었습니다.");
+    }
+
+    // 참고: 아무나 경매를 조회할 수 있게 로그인이 필요없음
     @GetMapping("/{auctionId}")
     public ResponseEntity<AuctionDetailResponse> getAuction(@PathVariable Long auctionId) {
         AuctionDetailResponse response = auctionService.getAuction(auctionId);

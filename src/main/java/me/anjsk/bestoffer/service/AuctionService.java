@@ -5,10 +5,8 @@ import me.anjsk.bestoffer.domain.User;
 import me.anjsk.bestoffer.dto.AuctionCreateRequest;
 import me.anjsk.bestoffer.dto.AuctionDetailResponse;
 import me.anjsk.bestoffer.dto.AuctionListResponse;
-import me.anjsk.bestoffer.exception.AuctionNotFoundException;
-import me.anjsk.bestoffer.exception.InvalidEndTimeException;
-import me.anjsk.bestoffer.exception.InvalidPriceException;
-import me.anjsk.bestoffer.exception.UserNotFoundException;
+import me.anjsk.bestoffer.dto.AuctionUpdateRequest;
+import me.anjsk.bestoffer.exception.*;
 import me.anjsk.bestoffer.repository.AuctionRepository;
 import me.anjsk.bestoffer.repository.UserRepository;
 import org.springframework.data.domain.Page;
@@ -57,6 +55,31 @@ public class AuctionService {
         return auctionRepository.save(auction).getId();
     }
 
+    // 경매 수정
+    public void updateAuction(Long auctionId, AuctionUpdateRequest request, Long userId) {
+        Auction auction = auctionRepository.findById(auctionId)
+                .orElseThrow(AuctionNotFoundException::new);
+
+        // 요청한 유저가 판매자인지 확인
+        if (!auction.isSeller(userId)) {
+            throw new UnauthorizedAccessException();
+        }
+
+        // Dirty Checking
+        auction.updateInfo(request.getTitle(), request.getDescription());
+    }
+
+    // 경매 삭제 (소프트 삭제)
+    public void deleteAuction(Long auctionId, Long userId) {
+        Auction auction = auctionRepository.findById(auctionId)
+                .orElseThrow(AuctionNotFoundException::new);
+
+        if (!auction.isSeller(userId)) {
+            throw new UnauthorizedAccessException();
+        }
+
+        auction.markAsDeleted();
+    }
 
     // 단건 상세 조회
     public AuctionDetailResponse getAuction(Long auctionId) {

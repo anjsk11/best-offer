@@ -35,7 +35,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<String> handleAdminRequiredException() {
         return ResponseEntity
                 .status(HttpStatus.FORBIDDEN)
-                .body("접근 권한이 없습니다.");
+                .body("관리자 외에는 접근할 수 없습니다.");
     }
 
     // 유저를 찾을 수 없을 때 (404 Not Found)
@@ -60,6 +60,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AuctionNotFoundException.class)
     public ResponseEntity<String> handleAuctionNotFoundException() {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body("존재하지 않는 경매입니다.");
+    }
+
+    // 권한이 없는 행동을 하였을 때 (403 Forbidden)
+    @ExceptionHandler(UnauthorizedAccessException.class)
+    public ResponseEntity<String> handleUnauthorizedAccessException() {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("해당 행동에 대한 권한이 없습니다.");
     }
 
 
