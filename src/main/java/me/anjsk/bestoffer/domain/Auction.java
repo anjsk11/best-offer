@@ -95,6 +95,11 @@ public class Auction {
         this.currentPrice = bidPrice;
     }
 
+    // 경매를 종료 상태로 변경
+    public void markAsCompleted() {
+        this.status = AuctionStatus.COMPLETED;
+    }
+
     // Getter
     public Long getId() { return id; }
     public String getTitle() { return title; }
