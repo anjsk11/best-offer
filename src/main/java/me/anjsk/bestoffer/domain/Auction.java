@@ -55,10 +55,29 @@ public class Auction {
         this.status = AuctionStatus.ON_SALE;
     }
 
+    // 작성자 검증 로직
+    public boolean isSeller(Long userId) {
+        return this.seller.getId().equals(userId);
+    }
+
+    // 경매 정보 수정 (제목과 설명만 수정 가능)
+    public void updateInfo(String title, String description) {
+        this.title = title;
+        this.description = description;
+    }
+
+    // 소프트 삭제 처리
+    public void markAsDeleted() {
+        this.status = AuctionStatus.DELETED;
+    }
+
     // Getter
     public Long getId() { return id; }
     public String getTitle() { return title; }
+    public String getDescription() { return description; }
+    public Long getStartPrice() { return startPrice; }
     public Long getCurrentPrice() { return currentPrice; }
+    public LocalDateTime getEndTime() { return endTime; }
     public AuctionStatus getStatus() { return status; }
     public User getSeller() { return seller; }
 }

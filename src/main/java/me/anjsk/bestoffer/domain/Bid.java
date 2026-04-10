@@ -46,6 +46,7 @@ public class Bid {
     // Getter
     public Long getId() { return id; }
     public Long getBidPrice() { return bidPrice; }
+    public LocalDateTime getBidTime() { return bidTime; }
     public Auction getAuction() { return auction; }
     public User getBidder() { return bidder; }
 }

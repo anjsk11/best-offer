@@ -34,28 +34,12 @@ class UserServiceTest {
     @InjectMocks // Mock들을 UserService에 주입
     private UserService userService;
 
-    // 테스트 데이터 준비
-    private SignupRequest signupRequest;
-    private LoginRequest loginRequest;
-    private User testUser;
-
-    @BeforeEach
-    void setUp() {
-        // 회원가입용 데이터
-        signupRequest = new SignupRequest("test@test.com", "password123", "테스터");
-
-        // 로그인 테스트용 데이터
-        loginRequest = new LoginRequest("test@test.com", "password123");
-        testUser = new User("test@test.com", "encoded_password", "테스터", UserRole.ROLE_USER);
-    }
-
-    // ==========================================
     // 회원가입 (Signup) 테스트
-    // ==========================================
-
     @Test
-    @DisplayName("회원가입 성공 - 유저 정보 저장")
+    @DisplayName("회원가입 성공")
     void signup_Success() {
+
+        SignupRequest signupRequest = new SignupRequest("test@test.com", "password123", "테스터");
         // 중복된 이메일이 없다고 가정 (Empty Optional 반환)
         given(userRepository.findByEmail(signupRequest.getEmail()))
                 .willReturn(Optional.empty());
@@ -83,6 +67,8 @@ class UserServiceTest {
     @Test
     @DisplayName("회원가입 실패 - 중복된 이메일")
     void signup_Fail_DuplicateEmail() {
+
+        SignupRequest signupRequest = new SignupRequest("test@test.com", "password123", "테스터");
         // Given
         // 이미 해당 이메일을 가진 유저가 있다고 가정
         User existingUser = new User("test@test.com", "...", "...", UserRole.ROLE_USER);
@@ -98,13 +84,12 @@ class UserServiceTest {
         verify(userRepository, never()).save(any(User.class));
     }
 
-    // ==========================================
     // 로그인 (Login) 테스트
-    // ==========================================
-
     @Test
-    @DisplayName("로그인 성공 - 세션에 정보 저장")
+    @DisplayName("로그인 성공")
     void login_Success() {
+        LoginRequest loginRequest = new LoginRequest("test@test.com", "password123");
+        User testUser = new User("test@test.com", "encoded_password", "테스터", UserRole.ROLE_USER);
 
         given(userRepository.findByEmail(loginRequest.getEmail())).willReturn(Optional.of(testUser));
         given(passwordEncoder.matches(loginRequest.getPassword(), testUser.getPassword())).willReturn(true);
@@ -119,6 +104,9 @@ class UserServiceTest {
     @Test
     @DisplayName("로그인 실패 - 존재하지 않는 이메일")
     void login_Fail_EmailNotFound() {
+
+        LoginRequest loginRequest = new LoginRequest("test@test.com", "password123");
+        User testUser = new User("test@test.com", "encoded_password", "테스터", UserRole.ROLE_USER);
         // Given
         given(userRepository.findByEmail(loginRequest.getEmail())).willReturn(Optional.empty());
 
@@ -129,6 +117,9 @@ class UserServiceTest {
     @Test
     @DisplayName("로그인 실패 - 비밀번호 불일치")
     void login_Fail_WrongPassword() {
+
+        LoginRequest loginRequest = new LoginRequest("test@test.com", "password123");
+        User testUser = new User("test@test.com", "encoded_password", "테스터", UserRole.ROLE_USER);
         // Given
         given(userRepository.findByEmail(loginRequest.getEmail())).willReturn(Optional.of(testUser));
         given(passwordEncoder.matches(loginRequest.getPassword(), testUser.getPassword())).willReturn(false);
