@@ -56,6 +56,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("가격은 0원 이상이어야 합니다.");
     }
 
+    // 경매를 찾을 수 없을 때 (404 Not Found)
+    @ExceptionHandler(AuctionNotFoundException.class)
+    public ResponseEntity<String> handleAuctionNotFoundException() {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("존재하지 않는 경매입니다.");
+    }
 
 
     //===========================

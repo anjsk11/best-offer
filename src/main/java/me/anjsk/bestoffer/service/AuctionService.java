@@ -3,11 +3,16 @@ package me.anjsk.bestoffer.service;
 import me.anjsk.bestoffer.domain.Auction;
 import me.anjsk.bestoffer.domain.User;
 import me.anjsk.bestoffer.dto.AuctionCreateRequest;
+import me.anjsk.bestoffer.dto.AuctionDetailResponse;
+import me.anjsk.bestoffer.dto.AuctionListResponse;
+import me.anjsk.bestoffer.exception.AuctionNotFoundException;
 import me.anjsk.bestoffer.exception.InvalidEndTimeException;
 import me.anjsk.bestoffer.exception.InvalidPriceException;
 import me.anjsk.bestoffer.exception.UserNotFoundException;
 import me.anjsk.bestoffer.repository.AuctionRepository;
 import me.anjsk.bestoffer.repository.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,5 +55,22 @@ public class AuctionService {
         );
 
         return auctionRepository.save(auction).getId();
+    }
+
+
+    // 단건 상세 조회
+    public AuctionDetailResponse getAuction(Long auctionId) {
+        Auction auction = auctionRepository.findById(auctionId)
+                .orElseThrow(AuctionNotFoundException::new);
+
+        return new AuctionDetailResponse(auction);
+    }
+
+    // 다건 목록 페이징 조회 (최신순 등은 컨트롤러에서 결정)
+    public Page<AuctionListResponse> getAuctions(Pageable pageable) {
+        // auctionRepository.findAll()은 Pageable을 받아 Page<Auction>을 반환
+        // map()을 이용해 엔티티를 DTO로 변환해 Page<AuctionListResponse>으로
+        return auctionRepository.findAll(pageable)
+                .map(auction -> new AuctionListResponse(auction));
     }
 }
