@@ -11,6 +11,8 @@ public class AuctionListResponse {
     private LocalDateTime endTime;
     private AuctionStatus status;
 
+    protected AuctionListResponse() {}
+
     public AuctionListResponse(Auction auction) {
         this.id = auction.getId();
         this.title = auction.getTitle();
@@ -19,9 +21,9 @@ public class AuctionListResponse {
         this.status = auction.getStatus();
     }
 
-    public Long id() { return id; }
-    public String title() { return title; }
-    public Long currentPrice() { return currentPrice; }
-    public LocalDateTime endTime() { return endTime; }
-    public AuctionStatus status() { return status; }
+    public Long getId() { return id; }
+    public String getTitle() { return title; }
+    public Long getCurrentPrice() { return currentPrice; }
+    public LocalDateTime getEndTime() { return endTime; }
+    public AuctionStatus getStatus() { return status; }
 }

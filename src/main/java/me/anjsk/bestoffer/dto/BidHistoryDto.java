@@ -8,6 +8,8 @@ public class BidHistoryDto {
     private Long bidPrice;
     private LocalDateTime bidTime;
 
+    protected BidHistoryDto() {}
+
     public BidHistoryDto(Bid bid) {
         this.bidderNickname = bid.getBidder().getNickname();
         this.bidPrice = bid.getBidPrice();

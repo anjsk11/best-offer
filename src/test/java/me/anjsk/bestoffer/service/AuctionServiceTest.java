@@ -317,8 +317,8 @@ class AuctionServiceTest {
         assertEquals(2, response.getTotalElements());
         assertEquals(1, response.getTotalPages());
         assertEquals(2, response.getContent().size());
-        assertEquals("맥북 프로", response.getContent().get(0).title());
-        assertEquals("아이패드", response.getContent().get(1).title());
+        assertEquals("맥북 프로", response.getContent().get(0).getTitle());
+        assertEquals("아이패드", response.getContent().get(1).getTitle());
         verify(auctionRepository, times(1)).findAll(pageable);
     }
 

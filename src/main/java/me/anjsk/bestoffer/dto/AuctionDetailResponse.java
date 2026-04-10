@@ -18,6 +18,8 @@ public class AuctionDetailResponse {
     private String sellerNickname;
     private List<BidHistoryDto> bids;
 
+    protected AuctionDetailResponse() {}
+
     public AuctionDetailResponse(Auction auction, List<Bid> bidEntities) {
         this.id = auction.getId();
         this.title = auction.getTitle();
