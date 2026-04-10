@@ -47,6 +47,7 @@ jobs:
             # -e 옵션으로 RDS 정보를 컨테이너에 주입합니다.
             sudo docker run -d --restart always --name bestoffer-server \
               -p 8080:8080 \
+              -e SPRING_PROFILES_ACTIVE=prod \
               -e RDS_HOSTNAME=${{ secrets.RDS_HOSTNAME }} \
               -e RDS_DB_NAME=${{ secrets.RDS_DB_NAME }} \
               -e RDS_USERNAME=${{ secrets.RDS_USERNAME }} \
