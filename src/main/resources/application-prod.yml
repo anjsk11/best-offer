@@ -1,0 +1,11 @@
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${RDS_HOSTNAME}:3306/${RDS_DB_NAME}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: ${RDS_USERNAME}
+    password: ${RDS_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate # 기존 테이블 구조와 엔티티가 일치하는지만 검증 (운영에서는 절대 create 금지)
+    show-sql: false # 운영 환경에서는 성능을 위해 쿼리 로그를 끄는 것이 일반적

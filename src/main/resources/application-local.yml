@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:bestoffer_db;MODE=MySQL;NON_KEYWORDS=USER
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: create # 앱 실행 시 엔티티를 기반으로 테이블을 자동으로 생성 (로컬 전용!)
+    show-sql: true # 콘솔에 쿼리 출력
+    properties:
+      hibernate:
+        format_sql: true # 쿼리를 보기 좋게 정렬해서 출력
+
+  h2:
+    console:
+      enabled: true # 웹 브라우저에서 H2 DB 확인 가능
+      path: /h2-console # 접속 경로 (http://localhost:8080/h2-console)

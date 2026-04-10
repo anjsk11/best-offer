@@ -2,7 +2,8 @@ spring:
   application:
     name: best-offer
 
-  datasource:
-    url: jdbc:mysql://${RDS_HOSTNAME}:3306/${RDS_DB_NAME}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-    username: ${RDS_USERNAME}
-    password: ${RDS_PASSWORD}
+  profiles:
+    active: local # 기본적으로 로컬(H2) 환경으로 실행하도록 설정
+
+  jpa:
+    open-in-view: false # OSIV 경고 해결을 위해 공통으로 false 설정
