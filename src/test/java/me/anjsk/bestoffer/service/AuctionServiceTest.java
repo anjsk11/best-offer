@@ -4,10 +4,8 @@ import me.anjsk.bestoffer.domain.Auction;
 import me.anjsk.bestoffer.domain.User;
 import me.anjsk.bestoffer.domain.enums.UserRole;
 import me.anjsk.bestoffer.dto.AuctionCreateRequest;
-import me.anjsk.bestoffer.exception.InvalidEndTimeException;
-import me.anjsk.bestoffer.exception.InvalidPriceException;
-import me.anjsk.bestoffer.exception.UserNotFoundException;
-import me.anjsk.bestoffer.exception.AuctionNotFoundException;
+import me.anjsk.bestoffer.dto.AuctionUpdateRequest;
+import me.anjsk.bestoffer.exception.*;
 import me.anjsk.bestoffer.repository.AuctionRepository;
 import me.anjsk.bestoffer.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,6 +46,8 @@ class AuctionServiceTest {
 
     private User testSeller;
     private final Long SELLER_ID = 1L;
+    private final Long OTHER_USER_ID = 2L;
+    private final Long AUCTION_ID = 100L;
 
     @BeforeEach
     void setUp() {
@@ -132,6 +132,80 @@ class AuctionServiceTest {
         });
 
         verify(auctionRepository, never()).save(any());
+    }
+
+    // 경매 수정 (Update) 테스트
+    @Test
+    @DisplayName("경매 수정 성공")
+    void updateAuction_Success() {
+        // Given
+        Auction testAuction = new Auction("원래 제목", "원래 설명", 10000L, LocalDateTime.now().plusDays(1), testSeller);
+        ReflectionTestUtils.setField(testAuction, "id", AUCTION_ID);
+
+        AuctionUpdateRequest request = new AuctionUpdateRequest("수정된 제목", "수정된 설명");
+        given(auctionRepository.findById(AUCTION_ID)).willReturn(Optional.of(testAuction));
+
+        // When
+        auctionService.updateAuction(AUCTION_ID, request, SELLER_ID);
+
+        // Then
+        // JPA의 더티 체킹을 믿고 엔티티의 값이 잘 바뀌었는지 직접 확인
+        assertEquals("수정된 제목", testAuction.getTitle());
+        assertEquals("수정된 설명", testAuction.getDescription());
+    }
+
+    @Test
+    @DisplayName("경매 수정 실패 - 작성자가 아님")
+    void updateAuction_Fail_Unauthorized() {
+        // Given
+        Auction testAuction = new Auction("원래 제목", "원래 설명", 10000L, LocalDateTime.now().plusDays(1), testSeller);
+        ReflectionTestUtils.setField(testAuction, "id", AUCTION_ID);
+
+        AuctionUpdateRequest request = new AuctionUpdateRequest("수정된 제목", "수정된 설명");
+        given(auctionRepository.findById(AUCTION_ID)).willReturn(Optional.of(testAuction));
+
+        // When & Then
+        assertThrows(UnauthorizedAccessException.class, () -> {
+            auctionService.updateAuction(AUCTION_ID, request, OTHER_USER_ID); // 다른 유저 ID 전달
+        });
+
+        // 예외가 터졌으므로 원본 데이터가 보호되었는지 확인
+        assertEquals("원래 제목", testAuction.getTitle());
+    }
+
+    // 경매 삭제 (Delete) 테스트
+    @Test
+    @DisplayName("경매 삭제 성공 - 상태가 DELETED로 변경됨")
+    void deleteAuction_Success() {
+        // Given
+        Auction testAuction = new Auction("원래 제목", "원래 설명", 10000L, LocalDateTime.now().plusDays(1), testSeller);
+        ReflectionTestUtils.setField(testAuction, "id", AUCTION_ID);
+
+        given(auctionRepository.findById(AUCTION_ID)).willReturn(Optional.of(testAuction));
+
+        // When
+        auctionService.deleteAuction(AUCTION_ID, SELLER_ID);
+
+        // Then
+        assertEquals(AuctionStatus.DELETED, testAuction.getStatus());
+    }
+
+    @Test
+    @DisplayName("경매 삭제 실패 - 작성자가 아님 (403 Forbidden)")
+    void deleteAuction_Fail_Unauthorized() {
+        // Given
+        Auction testAuction = new Auction("원래 제목", "원래 설명", 10000L, LocalDateTime.now().plusDays(1), testSeller);
+        ReflectionTestUtils.setField(testAuction, "id", AUCTION_ID);
+
+        given(auctionRepository.findById(AUCTION_ID)).willReturn(Optional.of(testAuction));
+
+        // When & Then
+        assertThrows(UnauthorizedAccessException.class, () -> {
+            auctionService.deleteAuction(AUCTION_ID, OTHER_USER_ID); // 다른 유저 ID 전달
+        });
+
+        // 예외가 터졌으므로 원본 상태(ON_SALE)가 보호되었는지 확인
+        assertEquals(AuctionStatus.ON_SALE, testAuction.getStatus());
     }
 
     @Test
