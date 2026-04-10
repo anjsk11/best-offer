@@ -7,35 +7,28 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-
+    // 회원가입 시 이미 등록된 이메일일 때 (409 Conflict)
     @ExceptionHandler(DuplicateEmailException.class)
     public ResponseEntity<String> handleDuplicateEmailException(DuplicateEmailException e) {
-        return ResponseEntity
-                .status(HttpStatus.CONFLICT)
-                .body("이미 사용 중인 이메일입니다. 다른 이메일을 입력해주세요.");
+        return ResponseEntity.status(HttpStatus.CONFLICT).body("이미 사용 중인 이메일입니다. 다른 이메일을 입력해주세요.");
     }
 
+    // 아이디/비번이 틀려 로그인 실패일 때 (401 Unauthorized)
     @ExceptionHandler(LoginFailedException.class)
     public ResponseEntity<String> handleLoginFailedException() {
-        return ResponseEntity
-                .status(HttpStatus.UNAUTHORIZED) // 401 Unauthorized
-                .body("아이디 또는 비밀번호가 잘못되었습니다.");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("아이디 또는 비밀번호가 잘못되었습니다.");
     }
 
     // 로그인이 필요할 때 (401 Unauthorized)
     @ExceptionHandler(LoginRequiredException.class)
     public ResponseEntity<String> handleLoginRequiredException() {
-        return ResponseEntity
-                .status(HttpStatus.UNAUTHORIZED)
-                .body("로그인이 필요한 서비스입니다.");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인이 필요한 서비스입니다.");
     }
 
     // 관리자 권한이 필요할 때 (403 Forbidden)
     @ExceptionHandler(AdminRequiredException.class)
     public ResponseEntity<String> handleAdminRequiredException() {
-        return ResponseEntity
-                .status(HttpStatus.FORBIDDEN)
-                .body("관리자 외에는 접근할 수 없습니다.");
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("관리자 외에는 접근할 수 없습니다.");
     }
 
     // 유저를 찾을 수 없을 때 (404 Not Found)
@@ -66,6 +59,24 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UnauthorizedAccessException.class)
     public ResponseEntity<String> handleUnauthorizedAccessException() {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body("해당 행동에 대한 권한이 없습니다.");
+    }
+
+    // 본인 경매에 입찰 시 (400 Bad Request)
+    @ExceptionHandler(SelfBidException.class)
+    public ResponseEntity<String> handleSelfBidException() {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("본인의 경매에는 입찰할 수 없습니다.");
+    }
+
+    // 입찰가가 현재가보다 낮거나 같을 때 (400 Bad Request)
+    @ExceptionHandler(LowBidPriceException.class)
+    public ResponseEntity<String> handleLowBidPriceException() {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("현재 최고가보다 높은 금액만 입찰 가능합니다.");
+    }
+
+    // 이미 종료된 경매일 때 (400 Bad Request)
+    @ExceptionHandler(AuctionClosedException.class)
+    public ResponseEntity<String> handleAuctionClosedException() {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("이미 종료된 경매입니다.");
     }
 
 

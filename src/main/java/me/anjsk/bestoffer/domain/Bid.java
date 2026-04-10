@@ -36,11 +36,11 @@ public class Bid {
 
     protected Bid() {}
 
-    public Bid(Long bidPrice, Auction auction, User bidder) {
+    public Bid(Long bidPrice, Auction auction, User bidder, LocalDateTime bidTime) {
         this.bidPrice = bidPrice;
         this.auction = auction;
         this.bidder = bidder;
-        this.bidTime = LocalDateTime.now();
+        this.bidTime = bidTime;
     }
 
     // Getter

@@ -2,6 +2,9 @@ package me.anjsk.bestoffer.domain;
 
 import jakarta.persistence.*;
 import me.anjsk.bestoffer.domain.enums.AuctionStatus;
+import me.anjsk.bestoffer.exception.AuctionClosedException;
+import me.anjsk.bestoffer.exception.LowBidPriceException;
+import me.anjsk.bestoffer.exception.SelfBidException;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -69,6 +72,27 @@ public class Auction {
     // 소프트 삭제 처리
     public void markAsDeleted() {
         this.status = AuctionStatus.DELETED;
+    }
+
+    // 입찰 발생 시 입찰 가능 여부 판단 후 가격 갱신
+    public void updateCurrentPrice(Long bidPrice, Long bidderId, LocalDateTime bidTime) {
+        // 1. 종료된 경매인지 검증
+        if (this.status != AuctionStatus.ON_SALE || bidTime.isAfter(this.endTime)) {
+            throw new AuctionClosedException();
+        }
+
+        // 2. 본인 입찰 금지
+        if (this.seller.getId().equals(bidderId)) {
+            throw new SelfBidException();
+        }
+
+        // 3. 가격 검증
+        if (bidPrice <= this.currentPrice) {
+            throw new LowBidPriceException();
+        }
+
+        // 4. 모두 통과했다면 가격 갱신
+        this.currentPrice = bidPrice;
     }
 
     // Getter
