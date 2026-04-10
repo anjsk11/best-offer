@@ -7,6 +7,7 @@ import me.anjsk.bestoffer.dto.AuctionCreateRequest;
 import me.anjsk.bestoffer.exception.InvalidEndTimeException;
 import me.anjsk.bestoffer.exception.InvalidPriceException;
 import me.anjsk.bestoffer.exception.UserNotFoundException;
+import me.anjsk.bestoffer.exception.AuctionNotFoundException;
 import me.anjsk.bestoffer.repository.AuctionRepository;
 import me.anjsk.bestoffer.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -26,6 +28,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
+
+import me.anjsk.bestoffer.domain.enums.AuctionStatus;
+import me.anjsk.bestoffer.dto.AuctionDetailResponse;
+import me.anjsk.bestoffer.dto.AuctionListResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 @ExtendWith(MockitoExtension.class)
 class AuctionServiceTest {
@@ -122,5 +132,96 @@ class AuctionServiceTest {
         });
 
         verify(auctionRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("경매 단건 조회 성공")
+    void getAuction_Success() {
+        // Given
+        Long auctionId = 1L;
+        Auction auction = new Auction("맥북 프로", "A급", 1000000L,
+                LocalDateTime.now().plusHours(2), testSeller);
+        ReflectionTestUtils.setField(auction, "id", auctionId);
+        ReflectionTestUtils.setField(auction, "status", AuctionStatus.ON_SALE);
+
+        given(auctionRepository.findById(auctionId)).willReturn(Optional.of(auction));
+
+        // When
+        AuctionDetailResponse response = auctionService.getAuction(auctionId);
+
+        // Then
+        assertEquals(auctionId, response.getId());
+        assertEquals("맥북 프로", response.getTitle());
+        assertEquals("A급", response.getDescription());
+        assertEquals(1000000L, response.getStartPrice());
+        assertEquals("판매자", response.getSellerNickname());
+        verify(auctionRepository, times(1)).findById(auctionId);
+    }
+
+    @Test
+    @DisplayName("경매 단건 조회 실패 - 존재하지 않는 경매")
+    void getAuction_Fail_AuctionNotFound() {
+        // Given
+        Long auctionId = 999L;
+        given(auctionRepository.findById(auctionId)).willReturn(Optional.empty());
+
+        // When & Then
+        assertThrows(AuctionNotFoundException.class, () -> {
+            auctionService.getAuction(auctionId);
+        });
+
+        verify(auctionRepository, times(1)).findById(auctionId);
+    }
+
+    @Test
+    @DisplayName("경매 목록 페이징 조회 성공")
+    void getAuctions_Success() {
+        // Given
+        PageRequest pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "id"));
+
+        Auction auction1 = new Auction("맥북 프로", "A급", 1000000L,
+                LocalDateTime.now().plusHours(2), testSeller);
+        ReflectionTestUtils.setField(auction1, "id", 2L);
+        ReflectionTestUtils.setField(auction1, "status", AuctionStatus.ON_SALE);
+
+        Auction auction2 = new Auction("아이패드", "S급", 500000L,
+                LocalDateTime.now().plusHours(3), testSeller);
+        ReflectionTestUtils.setField(auction2, "id", 1L);
+        ReflectionTestUtils.setField(auction2, "status", AuctionStatus.ON_SALE);
+
+        List<Auction> auctions = List.of(auction1, auction2);
+        Page<Auction> auctionPage = new PageImpl<>(auctions, pageable, auctions.size());
+
+        given(auctionRepository.findAll(pageable)).willReturn(auctionPage);
+
+        // When
+        Page<AuctionListResponse> response = auctionService.getAuctions(pageable);
+
+        // Then
+        assertEquals(2, response.getTotalElements());
+        assertEquals(1, response.getTotalPages());
+        assertEquals(2, response.getContent().size());
+        assertEquals("맥북 프로", response.getContent().get(0).title());
+        assertEquals("아이패드", response.getContent().get(1).title());
+        verify(auctionRepository, times(1)).findAll(pageable);
+    }
+
+    @Test
+    @DisplayName("경매 목록 페이징 조회 - 결과 없음")
+    void getAuctions_EmptyResult() {
+        // Given
+        PageRequest pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "id"));
+
+        Page<Auction> emptyPage = new PageImpl<>(List.of(), pageable, 0);
+        given(auctionRepository.findAll(pageable)).willReturn(emptyPage);
+
+        // When
+        Page<AuctionListResponse> response = auctionService.getAuctions(pageable);
+
+        // Then
+        assertEquals(0, response.getTotalElements());
+        assertEquals(0, response.getTotalPages());
+        assertEquals(0, response.getContent().size());
+        verify(auctionRepository, times(1)).findAll(pageable);
     }
 }
