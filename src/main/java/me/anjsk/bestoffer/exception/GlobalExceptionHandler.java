@@ -4,9 +4,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 @RestControllerAdvice
-public class GlobalExceptionHandler {
+public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     // 회원가입 시 이미 등록된 이메일일 때 (409 Conflict)
     @ExceptionHandler(DuplicateEmailException.class)
     public ResponseEntity<String> handleDuplicateEmailException(DuplicateEmailException e) {
@@ -84,9 +85,9 @@ public class GlobalExceptionHandler {
     // 그 외 예상치 못한 모든 예외 처리
     //===========================
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<String> handleAllException(Exception e) {
-        return ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("서버 내부 오류가 발생했습니다.");
+    public ResponseEntity<String> handleAllUncaughtException(Exception e) {
+        e.printStackTrace(); // 로컬 콘솔에서 에러 추적을 위해 남겨둠
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("서버 내부에서 예상치 못한 문제가 발생했습니다.");
     }
 }
