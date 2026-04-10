@@ -40,4 +40,5 @@ public class AuctionDetailResponse {
     public LocalDateTime getEndTime() { return endTime; }
     public AuctionStatus getStatus() { return status; }
     public String getSellerNickname() { return sellerNickname; }
+    public List<BidHistoryDto> getBids() { return bids; }
 }

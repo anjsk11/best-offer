@@ -1,12 +1,14 @@
 package me.anjsk.bestoffer.service;
 
 import me.anjsk.bestoffer.domain.Auction;
+import me.anjsk.bestoffer.domain.Bid;
 import me.anjsk.bestoffer.domain.User;
 import me.anjsk.bestoffer.domain.enums.UserRole;
 import me.anjsk.bestoffer.dto.AuctionCreateRequest;
 import me.anjsk.bestoffer.dto.AuctionUpdateRequest;
 import me.anjsk.bestoffer.exception.*;
 import me.anjsk.bestoffer.repository.AuctionRepository;
+import me.anjsk.bestoffer.repository.BidRepository;
 import me.anjsk.bestoffer.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -18,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -40,6 +43,7 @@ class AuctionServiceTest {
 
     @Mock private AuctionRepository auctionRepository;
     @Mock private UserRepository userRepository;
+    @Mock private BidRepository bidRepository;
 
     @InjectMocks
     private AuctionService auctionService;
@@ -220,6 +224,16 @@ class AuctionServiceTest {
 
         given(auctionRepository.findById(auctionId)).willReturn(Optional.of(auction));
 
+        User bidder = new User("bidder@test.com", "pass", "입찰자", UserRole.ROLE_USER);
+        ReflectionTestUtils.setField(bidder, "id", 2L);
+
+        Bid mockBid = new Bid(15000L, auction, bidder, LocalDateTime.now());
+        ReflectionTestUtils.setField(mockBid, "id", 1L);
+
+        // 새로 만든 JOIN FETCH 쿼리 메서드가 호출될 때 mockBid 리스트를 반환하도록 설정
+        given(bidRepository.findBidsWithBidderByAuctionId(auctionId))
+                .willReturn(List.of(mockBid));
+
         // When
         AuctionDetailResponse response = auctionService.getAuction(auctionId);
 
@@ -229,7 +243,35 @@ class AuctionServiceTest {
         assertEquals("A급", response.getDescription());
         assertEquals(1000000L, response.getStartPrice());
         assertEquals("판매자", response.getSellerNickname());
+
+        // 입찰 내역이 잘 매핑되어 들어왔는가?
+        assertEquals(1, response.getBids().size());
+        assertEquals(15000L, response.getBids().get(0).getBidPrice());
+        assertEquals("입찰자", response.getBids().get(0).getBidderNickname());
+
         verify(auctionRepository, times(1)).findById(auctionId);
+        verify(bidRepository, times(1)).findBidsWithBidderByAuctionId(auctionId);
+    }
+
+    @Test
+    @DisplayName("경매 상세 조회 성공 - 입찰 내역이 없는 경우 (빈 리스트 반환)")
+    void getAuction_Success_NoBids() {
+        // Given
+        Auction testAuction = new Auction("원래 제목", "원래 설명", 10000L, LocalDateTime.now().plusDays(1), testSeller);
+        ReflectionTestUtils.setField(testAuction, "id", AUCTION_ID);
+
+        given(auctionRepository.findById(AUCTION_ID)).willReturn(Optional.of(testAuction));
+
+        // 입찰 내역이 없으므로 빈 리스트 반환
+        given(bidRepository.findBidsWithBidderByAuctionId(AUCTION_ID))
+                .willReturn(Collections.emptyList());
+
+        // When
+        AuctionDetailResponse response = auctionService.getAuction(AUCTION_ID);
+
+        // Then
+        assertEquals(AUCTION_ID, response.getId());
+        assertEquals(0, response.getBids().size()); // 널(null)이 아니라 빈 리스트(size=0)인지 확인
     }
 
     @Test
