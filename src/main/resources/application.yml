@@ -12,7 +12,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: prometheus # 프로메테우스 전용 엔드포인트 오픈
+        include: prometheus, metrics # 프로메테우스 전용 엔드포인트 오픈
   metrics:
     tags:
       application: BestOffer # 그라파나 대시보드에서 식별할 이름
