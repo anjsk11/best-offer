@@ -18,13 +18,16 @@ public class BidController {
     public BidController(BidService bidService) { this.bidService = bidService; }
 
     @PostMapping
-    @RequireLogin
+    // @RequireLogin       // TEST MODE
     public ResponseEntity<String> placeBid(
             @PathVariable Long auctionId,
             @RequestBody BidRequest request,
             HttpSession session) {
 
-        Long bidderId = (Long) session.getAttribute("LOGIN_USER");
+        // Long bidderId = (Long) session.getAttribute("LOGIN_USER");       // TEST MODE
+
+        Long bidderId = request.getBidderId();      // 테스트용
+
         // 요청이 컨트롤러에 도달한 즉시 시간을 기록
         LocalDateTime arrivalTime = LocalDateTime.now();
 
