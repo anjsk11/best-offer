@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class AuctionTest {
 
     private User seller;
+    private User bidder;
     private Auction auction;
     private final Long SELLER_ID = 1L;
     private final Long OTHER_USER_ID = 2L;
@@ -28,6 +29,9 @@ class AuctionTest {
         seller = new User("seller@test.com", "pass", "판매자", UserRole.ROLE_USER);
         ReflectionTestUtils.setField(seller, "id", SELLER_ID);
 
+        bidder = new User("bidder@test.com", "pass", "입찰자", UserRole.ROLE_USER);
+        ReflectionTestUtils.setField(bidder, "id", OTHER_USER_ID);
+
         // 내일 마감이고, 시작가가 10,000원인 정상 경매 세팅
         auction = new Auction("테스트 경매", "설명", 10000L, LocalDateTime.now().plusDays(1), seller);
     }
@@ -36,10 +40,11 @@ class AuctionTest {
     @DisplayName("입찰 성공 - 현재가가 정상적으로 갱신됨")
     void updateCurrentPrice_Success() {
         // When: 다른 사용자가 15,000원을 입찰
-        auction.updateCurrentPrice(15000L, OTHER_USER_ID, LocalDateTime.now());
+        auction.updateCurrentPrice(15000L, bidder, LocalDateTime.now());
 
         // Then: 현재가가 15,000원으로 바뀌어야 함
         assertEquals(15000L, auction.getCurrentPrice());
+        assertEquals(OTHER_USER_ID, auction.getHighestBidder().getId());
     }
 
     @Test
@@ -47,7 +52,7 @@ class AuctionTest {
     void updateCurrentPrice_Fail_SelfBid() {
         // When & Then
         assertThrows(SelfBidException.class, () -> {
-            auction.updateCurrentPrice(15000L, SELLER_ID, LocalDateTime.now());
+            auction.updateCurrentPrice(15000L, seller, LocalDateTime.now());
         });
     }
 
@@ -57,12 +62,12 @@ class AuctionTest {
         // When & Then
         assertThrows(LowBidPriceException.class, () -> {
             // 현재가가 10,000원인데 9,000원 입찰 시도
-            auction.updateCurrentPrice(9000L, OTHER_USER_ID, LocalDateTime.now());
+            auction.updateCurrentPrice(9000L, bidder, LocalDateTime.now());
         });
 
         assertThrows(LowBidPriceException.class, () -> {
             // 현재가와 동일한 10,000원 입찰 시도
-            auction.updateCurrentPrice(10000L, OTHER_USER_ID, LocalDateTime.now());
+            auction.updateCurrentPrice(10000L, bidder, LocalDateTime.now());
         });
     }
 
@@ -74,7 +79,7 @@ class AuctionTest {
 
         // When & Then
         assertThrows(AuctionClosedException.class, () -> {
-            auction.updateCurrentPrice(15000L, OTHER_USER_ID, LocalDateTime.now());
+            auction.updateCurrentPrice(15000L, bidder, LocalDateTime.now());
         });
     }
 
@@ -86,7 +91,7 @@ class AuctionTest {
 
         // When & Then
         assertThrows(AuctionClosedException.class, () -> {
-            auction.updateCurrentPrice(15000L, OTHER_USER_ID, LocalDateTime.now());
+            auction.updateCurrentPrice(15000L, bidder, LocalDateTime.now());
         });
     }
 }

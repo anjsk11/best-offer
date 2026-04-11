@@ -113,4 +113,5 @@ public class Auction {
     public LocalDateTime getEndTime() { return endTime; }
     public AuctionStatus getStatus() { return status; }
     public User getSeller() { return seller; }
+    public User getHighestBidder() { return highestBidder; }
 }
