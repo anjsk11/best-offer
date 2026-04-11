@@ -36,7 +36,7 @@ public class AuctionService {
                 .orElseThrow(() -> new UserNotFoundException());
 
         // 2. 마감 시간 검증
-        if (request.getEndTime().isBefore(LocalDateTime.now().plusHours(1))) {
+        if (request.getEndTime().isBefore(LocalDateTime.now())) {
             throw new InvalidEndTimeException();
         }
 

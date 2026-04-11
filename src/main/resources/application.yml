@@ -7,3 +7,12 @@ spring:
 
   jpa:
     open-in-view: false # OSIV 경고 해결을 위해 공통으로 false 설정
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: prometheus # 프로메테우스 전용 엔드포인트 오픈
+  metrics:
+    tags:
+      application: BestOffer # 그라파나 대시보드에서 식별할 이름

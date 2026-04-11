@@ -105,7 +105,7 @@ class AuctionServiceTest {
     @DisplayName("경매 등록 실패 - 마감 시간이 최소 허용 시간보다 짧음")
     void createAuction_Fail_InvalidEndTime() {
         // Given
-        LocalDateTime invalidEndTime = LocalDateTime.now().plusMinutes(30);
+        LocalDateTime invalidEndTime = LocalDateTime.now().minusMinutes(30);
         AuctionCreateRequest request = new AuctionCreateRequest("맥북 프로", "A급", 1000000L, invalidEndTime);
 
         given(userRepository.findById(SELLER_ID)).willReturn(Optional.of(testSeller));
