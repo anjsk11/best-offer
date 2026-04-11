@@ -35,7 +35,7 @@ public class BidService {
                 .orElseThrow(UserNotFoundException::new);
 
         // 비즈니스 로직 검증 및 현재가 갱신
-        auction.updateCurrentPrice(bidPrice, bidderId, bidTime);
+        auction.updateCurrentPrice(bidPrice, bidder, bidTime);
 
         // 입찰 기록(Bid) 생성 및 저장
         Bid bid = new Bid(bidPrice, auction, bidder, bidTime);

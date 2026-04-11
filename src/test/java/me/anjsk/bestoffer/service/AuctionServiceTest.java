@@ -4,8 +4,7 @@ import me.anjsk.bestoffer.domain.Auction;
 import me.anjsk.bestoffer.domain.Bid;
 import me.anjsk.bestoffer.domain.User;
 import me.anjsk.bestoffer.domain.enums.UserRole;
-import me.anjsk.bestoffer.dto.AuctionCreateRequest;
-import me.anjsk.bestoffer.dto.AuctionUpdateRequest;
+import me.anjsk.bestoffer.dto.*;
 import me.anjsk.bestoffer.exception.*;
 import me.anjsk.bestoffer.repository.AuctionRepository;
 import me.anjsk.bestoffer.repository.BidRepository;
@@ -31,8 +30,6 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 import me.anjsk.bestoffer.domain.enums.AuctionStatus;
-import me.anjsk.bestoffer.dto.AuctionDetailResponse;
-import me.anjsk.bestoffer.dto.AuctionListResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -108,7 +105,7 @@ class AuctionServiceTest {
     @DisplayName("경매 등록 실패 - 마감 시간이 최소 허용 시간보다 짧음")
     void createAuction_Fail_InvalidEndTime() {
         // Given
-        LocalDateTime invalidEndTime = LocalDateTime.now().plusMinutes(30);
+        LocalDateTime invalidEndTime = LocalDateTime.now().minusMinutes(30);
         AuctionCreateRequest request = new AuctionCreateRequest("맥북 프로", "A급", 1000000L, invalidEndTime);
 
         given(userRepository.findById(SELLER_ID)).willReturn(Optional.of(testSeller));
@@ -213,7 +210,7 @@ class AuctionServiceTest {
     }
 
     @Test
-    @DisplayName("경매 단건 조회 성공")
+    @DisplayName("경매 상세 조회 성공")
     void getAuction_Success() {
         // Given
         Long auctionId = 1L;
@@ -221,18 +218,9 @@ class AuctionServiceTest {
                 LocalDateTime.now().plusHours(2), testSeller);
         ReflectionTestUtils.setField(auction, "id", auctionId);
         ReflectionTestUtils.setField(auction, "status", AuctionStatus.ON_SALE);
+        ReflectionTestUtils.setField(auction, "currentPrice", 1500000L);
 
         given(auctionRepository.findById(auctionId)).willReturn(Optional.of(auction));
-
-        User bidder = new User("bidder@test.com", "pass", "입찰자", UserRole.ROLE_USER);
-        ReflectionTestUtils.setField(bidder, "id", 2L);
-
-        Bid mockBid = new Bid(15000L, auction, bidder, LocalDateTime.now());
-        ReflectionTestUtils.setField(mockBid, "id", 1L);
-
-        // 새로 만든 JOIN FETCH 쿼리 메서드가 호출될 때 mockBid 리스트를 반환하도록 설정
-        given(bidRepository.findBidsWithBidderByAuctionId(auctionId))
-                .willReturn(List.of(mockBid));
 
         // When
         AuctionDetailResponse response = auctionService.getAuction(auctionId);
@@ -244,38 +232,11 @@ class AuctionServiceTest {
         assertEquals(1000000L, response.getStartPrice());
         assertEquals("판매자", response.getSellerNickname());
 
-        // 입찰 내역이 잘 매핑되어 들어왔는가?
-        assertEquals(1, response.getBids().size());
-        assertEquals(15000L, response.getBids().get(0).getBidPrice());
-        assertEquals("입찰자", response.getBids().get(0).getBidderNickname());
-
         verify(auctionRepository, times(1)).findById(auctionId);
-        verify(bidRepository, times(1)).findBidsWithBidderByAuctionId(auctionId);
     }
 
     @Test
-    @DisplayName("경매 상세 조회 성공 - 입찰 내역이 없는 경우 (빈 리스트 반환)")
-    void getAuction_Success_NoBids() {
-        // Given
-        Auction testAuction = new Auction("원래 제목", "원래 설명", 10000L, LocalDateTime.now().plusDays(1), testSeller);
-        ReflectionTestUtils.setField(testAuction, "id", AUCTION_ID);
-
-        given(auctionRepository.findById(AUCTION_ID)).willReturn(Optional.of(testAuction));
-
-        // 입찰 내역이 없으므로 빈 리스트 반환
-        given(bidRepository.findBidsWithBidderByAuctionId(AUCTION_ID))
-                .willReturn(Collections.emptyList());
-
-        // When
-        AuctionDetailResponse response = auctionService.getAuction(AUCTION_ID);
-
-        // Then
-        assertEquals(AUCTION_ID, response.getId());
-        assertEquals(0, response.getBids().size()); // 널(null)이 아니라 빈 리스트(size=0)인지 확인
-    }
-
-    @Test
-    @DisplayName("경매 단건 조회 실패 - 존재하지 않는 경매")
+    @DisplayName("경매 상세 조회 실패 - 존재하지 않는 경매")
     void getAuction_Fail_AuctionNotFound() {
         // Given
         Long auctionId = 999L;
@@ -287,6 +248,83 @@ class AuctionServiceTest {
         });
 
         verify(auctionRepository, times(1)).findById(auctionId);
+    }
+
+    @Test
+    @DisplayName("경매 입찰 내역 페이징 조회 성공")
+    void getBidHistory_Success() {
+        // Given
+        Long auctionId = 1L;
+        PageRequest pageable = PageRequest.of(0, 10);
+
+        // 유저 및 경매 객체 세팅
+        User bidder = new User("bidder@test.com", "pass", "입찰자", UserRole.ROLE_USER);
+        ReflectionTestUtils.setField(bidder, "id", 2L);
+
+        Auction auction = new Auction("맥북", "A급", 1000000L, LocalDateTime.now().plusHours(2), testSeller);
+        ReflectionTestUtils.setField(auction, "id", auctionId);
+
+        Bid mockBid = new Bid(1500000L, auction, bidder, LocalDateTime.now().plusMinutes(10));
+        ReflectionTestUtils.setField(mockBid, "id", 1L);
+        ReflectionTestUtils.setField(mockBid, "bidTime", LocalDateTime.now());
+
+        Page<Bid> bidPage = new PageImpl<>(List.of(mockBid), pageable, 1);
+
+        // Mocking
+        given(auctionRepository.existsById(auctionId)).willReturn(true);
+        given(bidRepository.findBidsByAuctionId(auctionId, pageable)).willReturn(bidPage);
+
+        // When
+        Page<BidHistoryResponse> response = auctionService.getBidHistory(auctionId, pageable);
+
+        // Then
+        assertEquals(1, response.getTotalElements());
+        assertEquals(1, response.getContent().size());
+
+        // 💡 Record 타입 필드 검증 (소괄호 사용)
+        assertEquals(1500000L, response.getContent().get(0).bidPrice());
+        assertEquals("입찰자", response.getContent().get(0).bidderNickname());
+
+        verify(auctionRepository, times(1)).existsById(auctionId);
+        verify(bidRepository, times(1)).findBidsByAuctionId(auctionId, pageable);
+    }
+
+    @Test
+    @DisplayName("경매 입찰 내역 페이징 조회 성공 - 아무도 입찰하지 않은 경우 (빈 페이지 반환)")
+    void getBidHistory_Success_NoBids() {
+        // Given
+        Long auctionId = 1L;
+        PageRequest pageable = PageRequest.of(0, 10);
+        Page<Bid> emptyPage = new PageImpl<>(Collections.emptyList(), pageable, 0);
+
+        given(auctionRepository.existsById(auctionId)).willReturn(true);
+        given(bidRepository.findBidsByAuctionId(auctionId, pageable)).willReturn(emptyPage);
+
+        // When
+        Page<BidHistoryResponse> response = auctionService.getBidHistory(auctionId, pageable);
+
+        // Then
+        assertEquals(0, response.getTotalElements());
+        assertEquals(0, response.getContent().size());
+    }
+
+    @Test
+    @DisplayName("경매 입찰 내역 페이징 조회 실패 - 존재하지 않는 경매 ID")
+    void getBidHistory_Fail_AuctionNotFound() {
+        // Given
+        Long invalidAuctionId = 999L;
+        PageRequest pageable = PageRequest.of(0, 10);
+
+        // 경매가 존재하지 않는다고 모킹
+        given(auctionRepository.existsById(invalidAuctionId)).willReturn(false);
+
+        // When & Then
+        assertThrows(AuctionNotFoundException.class, () -> {
+            auctionService.getBidHistory(invalidAuctionId, pageable);
+        });
+
+        // 💡 예외가 터졌으므로, BidRepository는 아예 호출되지 않았어야 함을 검증
+        verify(bidRepository, never()).findBidsByAuctionId(anyLong(), any());
     }
 
     @Test

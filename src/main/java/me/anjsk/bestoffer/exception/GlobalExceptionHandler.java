@@ -41,7 +41,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     // 마감 시간이 잘못되었을 때 (400 Bad Request)
     @ExceptionHandler(InvalidEndTimeException.class)
     public ResponseEntity<String> handleInvalidEndTimeException() {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("경매 마감 시간은 최소 1시간 이후로 설정해야 합니다.");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("경매 마감 시간은 현재 이후로 설정해야 합니다.");
     }
 
     // 가격이 잘못되었을 때 (400 Bad Request)

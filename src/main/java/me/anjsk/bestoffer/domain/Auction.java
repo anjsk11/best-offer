@@ -41,10 +41,13 @@ public class Auction {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdDate;
 
-    // 한 seller가 여러 개의 경매를 진행할 수 있다.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "seller_id", nullable = false)
     private User seller;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "highest_bidder_id")
+    private User highestBidder;
 
     protected Auction() {}
 
@@ -75,14 +78,14 @@ public class Auction {
     }
 
     // 입찰 발생 시 입찰 가능 여부 판단 후 가격 갱신
-    public void updateCurrentPrice(Long bidPrice, Long bidderId, LocalDateTime bidTime) {
+    public void updateCurrentPrice(Long bidPrice, User bidder, LocalDateTime bidTime) {
         // 1. 종료된 경매인지 검증
         if (this.status != AuctionStatus.ON_SALE || bidTime.isAfter(this.endTime)) {
             throw new AuctionClosedException();
         }
 
         // 2. 본인 입찰 금지
-        if (this.seller.getId().equals(bidderId)) {
+        if (this.seller.getId().equals(bidder.getId())) {
             throw new SelfBidException();
         }
 
@@ -93,6 +96,7 @@ public class Auction {
 
         // 4. 모두 통과했다면 가격 갱신
         this.currentPrice = bidPrice;
+        this.highestBidder = bidder;
     }
 
     // 경매를 종료 상태로 변경
@@ -109,4 +113,5 @@ public class Auction {
     public LocalDateTime getEndTime() { return endTime; }
     public AuctionStatus getStatus() { return status; }
     public User getSeller() { return seller; }
+    public User getHighestBidder() { return highestBidder; }
 }
