@@ -61,7 +61,7 @@ class BidServiceTest {
     void placeBid_Success() {
         // Given
         Long bidPrice = 15000L;
-        given(auctionRepository.findById(AUCTION_ID)).willReturn(Optional.of(auction));
+        given(auctionRepository.findByIdWithPessimisticLock(AUCTION_ID)).willReturn(Optional.of(auction));
         given(userRepository.findById(BIDDER_ID)).willReturn(Optional.of(bidder));
 
         Bid savedBid = new Bid(bidPrice, auction, bidder, LocalDateTime.now());
@@ -81,7 +81,7 @@ class BidServiceTest {
     @DisplayName("입찰 실패 - 존재하지 않는 경매")
     void placeBid_Fail_AuctionNotFound() {
         // Given
-        given(auctionRepository.findById(AUCTION_ID)).willReturn(Optional.empty());
+        given(auctionRepository.findByIdWithPessimisticLock(AUCTION_ID)).willReturn(Optional.empty());
 
         // When & Then
         assertThrows(AuctionNotFoundException.class, () -> {
