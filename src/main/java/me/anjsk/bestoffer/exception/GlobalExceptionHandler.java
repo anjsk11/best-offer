@@ -68,6 +68,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("본인의 경매에는 입찰할 수 없습니다.");
     }
 
+    // 입찰을 2번 이상 연속으로 했을 때 (400 Bad Request)
+    @ExceptionHandler(ConsecutiveBidException.class)
+    public ResponseEntity<String> handleConsecutiveBidException() {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("이미 최고 입찰자입니다.");
+    }
+
     // 입찰가가 현재가보다 낮거나 같을 때 (400 Bad Request)
     @ExceptionHandler(LowBidPriceException.class)
     public ResponseEntity<String> handleLowBidPriceException() {
