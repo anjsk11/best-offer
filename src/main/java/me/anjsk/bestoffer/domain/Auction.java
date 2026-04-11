@@ -3,6 +3,7 @@ package me.anjsk.bestoffer.domain;
 import jakarta.persistence.*;
 import me.anjsk.bestoffer.domain.enums.AuctionStatus;
 import me.anjsk.bestoffer.exception.AuctionClosedException;
+import me.anjsk.bestoffer.exception.ConsecutiveBidException;
 import me.anjsk.bestoffer.exception.LowBidPriceException;
 import me.anjsk.bestoffer.exception.SelfBidException;
 import org.springframework.data.annotation.CreatedDate;
@@ -92,7 +93,7 @@ public class Auction {
         // 연속 입찰 금지
         // 최고 입찰자가 존재하고, 그 입찰자의 ID가 지금 입찰하려는 사람의 ID와 같다면 차단
         if (this.highestBidder != null && this.highestBidder.getId().equals(bidder.getId())) {
-            throw new ConsecutiveBidException("이미 최고 입찰자입니다. 연속 입찰은 불가능합니다.");
+            throw new ConsecutiveBidException();
         }
 
         // 3. 가격 검증
