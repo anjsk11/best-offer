@@ -29,7 +29,7 @@ public class BidService {
 
     public Long placeBid(Long auctionId, Long bidPrice, Long bidderId, LocalDateTime bidTime) {
 
-        Auction auction = auctionRepository.findById(auctionId)
+        Auction auction = auctionRepository.findByIdWithPessimisticLock(auctionId)
                 .orElseThrow(AuctionNotFoundException::new);
         User bidder = userRepository.findById(bidderId)
                 .orElseThrow(UserNotFoundException::new);
