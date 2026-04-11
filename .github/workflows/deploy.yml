@@ -63,4 +63,4 @@ jobs:
           script: |
             mkdir -p ~/monitoring # 만약 폴더가 없다면 생성 (안전장치)
             cd ~/monitoring
-            docker-compose up -d
+            sudo docker-compose up -d
