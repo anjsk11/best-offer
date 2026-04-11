@@ -3,10 +3,7 @@ package me.anjsk.bestoffer.service;
 import me.anjsk.bestoffer.domain.Auction;
 import me.anjsk.bestoffer.domain.Bid;
 import me.anjsk.bestoffer.domain.User;
-import me.anjsk.bestoffer.dto.AuctionCreateRequest;
-import me.anjsk.bestoffer.dto.AuctionDetailResponse;
-import me.anjsk.bestoffer.dto.AuctionListResponse;
-import me.anjsk.bestoffer.dto.AuctionUpdateRequest;
+import me.anjsk.bestoffer.dto.*;
 import me.anjsk.bestoffer.exception.*;
 import me.anjsk.bestoffer.repository.AuctionRepository;
 import me.anjsk.bestoffer.repository.BidRepository;
@@ -91,9 +88,22 @@ public class AuctionService {
         Auction auction = auctionRepository.findById(auctionId)
                 .orElseThrow(AuctionNotFoundException::new);
 
-        List<Bid> bids = bidRepository.findBidsWithBidderByAuctionId(auctionId);
+        return new AuctionDetailResponse(auction);
+    }
 
-        return new AuctionDetailResponse(auction, bids);
+    // 특정 경매의 입찰 목록 조회
+    @Transactional(readOnly = true)
+    public Page<BidHistoryResponse> getBidHistory(Long auctionId, Pageable pageable) {
+
+        if (!auctionRepository.existsById(auctionId)) {
+            throw new AuctionNotFoundException();
+        }
+
+        // DB에서 페이징된 입찰 내역(엔티티) 조회
+        Page<Bid> bids = bidRepository.findBidsByAuctionId(auctionId, pageable);
+
+        // Page 안의 요소들을 map을 이용해 DTO로 싹 변환해서 반환
+        return bids.map(BidHistoryResponse::from);
     }
 
     // 다건 목록 페이징 조회 (최신순 등은 컨트롤러에서 결정)

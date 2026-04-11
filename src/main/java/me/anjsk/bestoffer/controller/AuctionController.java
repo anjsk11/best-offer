@@ -2,10 +2,7 @@ package me.anjsk.bestoffer.controller;
 
 import jakarta.servlet.http.HttpSession;
 import me.anjsk.bestoffer.annotation.RequireLogin;
-import me.anjsk.bestoffer.dto.AuctionCreateRequest;
-import me.anjsk.bestoffer.dto.AuctionDetailResponse;
-import me.anjsk.bestoffer.dto.AuctionListResponse;
-import me.anjsk.bestoffer.dto.AuctionUpdateRequest;
+import me.anjsk.bestoffer.dto.*;
 import me.anjsk.bestoffer.service.AuctionService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -65,10 +62,23 @@ public class AuctionController {
                 .ok("경매글이 삭제 처리되었습니다.");
     }
 
+    // 경매 상세 조회
     // 참고: 아무나 경매를 조회할 수 있게 로그인이 필요없음
     @GetMapping("/{auctionId}")
     public ResponseEntity<AuctionDetailResponse> getAuction(@PathVariable Long auctionId) {
         AuctionDetailResponse response = auctionService.getAuction(auctionId);
+        return ResponseEntity
+                .ok(response);
+    }
+
+    @GetMapping("/{auctionId}/bids")
+    public ResponseEntity<Page<BidHistoryResponse>> getBidHistory(
+            @PathVariable Long auctionId,
+            // 기본값: 1페이지에 10개씩, 입찰가(bidPrice) 기준 내림차순(DESC) 정렬
+            @PageableDefault(size = 10, sort = "bidPrice", direction = Sort.Direction.DESC) Pageable pageable) {
+
+        Page<BidHistoryResponse> response = auctionService.getBidHistory(auctionId, pageable);
+
         return ResponseEntity
                 .ok(response);
     }
