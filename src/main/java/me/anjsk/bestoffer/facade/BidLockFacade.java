@@ -27,7 +27,7 @@ public class BidLockFacade {
         RLock lock = redissonClient.getLock("auction_lock:" + auctionId);
 
         try {
-            boolean available = lock.tryLock(5, 3, TimeUnit.SECONDS);
+            boolean available = lock.tryLock(3, 2, TimeUnit.SECONDS);
 
             if (!available) {
                 log.warn("락 획득 실패 - 대기열이 너무 깁니다. auctionId: {}", auctionId);
