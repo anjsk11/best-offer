@@ -9,11 +9,25 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+
+    # 💡 [핵심 추가 부분] 테스트를 돌리기 전에 Redis 7.0을 백그라운드에 띄워줍니다.
+    services:
+      redis:
+        image: redis:7.0
+        ports:
+          - 6379:6379
+        # Redis가 완전히 켜질 때까지 기다리도록 헬스 체크(Health Check)를 설정합니다.
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4 # (참고: checkout 최신 안정화 버전은 v4입니다)
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v4 # (참고: setup-java 최신 안정화 버전은 v4입니다)
         with:
           java-version: '21'
           distribution: 'temurin'
