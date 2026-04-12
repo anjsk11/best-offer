@@ -69,7 +69,7 @@ public class BidLockFacade {
         RLock lock = redissonClient.getLock("auction_lock:" + auctionId);
 
         try {
-            boolean available = lock.tryLock(3, 2, TimeUnit.SECONDS);
+            boolean available = lock.tryLock(5, 1, TimeUnit.SECONDS);
 
             if (!available) {
                 log.warn("락 획득 실패 - 대기열이 너무 깁니다. auctionId: {}", auctionId);
@@ -81,6 +81,11 @@ public class BidLockFacade {
         } catch (InterruptedException e) {
             log.error("락 획득 중 스레드 인터럽트 발생", e);
             Thread.currentThread().interrupt();
+
+            // 미리 올려두었던 Redis의 기록을 날려버립니다.
+            // 그러면 다음 유저가 접근할 때 Cache Miss가 나서 DB의 정상적인 정보를 다시 가져옵니다.
+            redisTemplate.delete(auctionKey);
+
             throw new RuntimeException("입찰 처리 중 오류가 발생했습니다.");
         } finally {
             if (lock.isLocked() && lock.isHeldByCurrentThread()) {
