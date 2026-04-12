@@ -80,26 +80,26 @@ public class Auction {
 
     // 입찰 발생 시 입찰 가능 여부 판단 후 가격 갱신
     public void updateCurrentPrice(Long bidPrice, User bidder, LocalDateTime bidTime) {
-        // 1. 종료된 경매인지 검증
-        if (this.status != AuctionStatus.ON_SALE || bidTime.isAfter(this.endTime)) {
-            throw new AuctionClosedException();
-        }
-
-        // 2. 본인 입찰 금지
-        if (this.seller.getId().equals(bidder.getId())) {
-            throw new SelfBidException();
-        }
-
-        // 연속 입찰 금지
-        // 최고 입찰자가 존재하고, 그 입찰자의 ID가 지금 입찰하려는 사람의 ID와 같다면 차단
-        if (this.highestBidder != null && this.highestBidder.getId().equals(bidder.getId())) {
-            throw new ConsecutiveBidException();
-        }
-
-        // 3. 가격 검증
-        if (bidPrice <= this.currentPrice) {
-            throw new LowBidPriceException();
-        }
+//        // 1. 종료된 경매인지 검증
+//        if (this.status != AuctionStatus.ON_SALE || bidTime.isAfter(this.endTime)) {
+//            throw new AuctionClosedException();
+//        }
+//
+//        // 2. 본인 입찰 금지
+//        if (this.seller.getId().equals(bidder.getId())) {
+//            throw new SelfBidException();
+//        }
+//
+//        // 연속 입찰 금지
+//        // 최고 입찰자가 존재하고, 그 입찰자의 ID가 지금 입찰하려는 사람의 ID와 같다면 차단
+//        if (this.highestBidder != null && this.highestBidder.getId().equals(bidder.getId())) {
+//            throw new ConsecutiveBidException();
+//        }
+//
+//        // 3. 가격 검증
+//        if (bidPrice <= this.currentPrice) {
+//            throw new LowBidPriceException();
+//        }
 
         // 4. 모두 통과했다면 가격 갱신
         this.currentPrice = bidPrice;
