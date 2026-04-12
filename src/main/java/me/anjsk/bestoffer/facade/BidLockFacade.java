@@ -24,12 +24,12 @@ public class BidLockFacade {
 
     // 💡 1. 레디스 비서에게 줄 "입찰 심사 매뉴얼(Lua Script)"
     private static final String LUA_SCRIPT =
-            "local info = redis.call('HMGET', KEYS[1], 'status', 'sellerId', 'currentPrice', 'lastBidderId') " +
-                    "if info[1] ~= 'OPEN' then return 'ENDED' end " +
+            "local info = redis.call('HMGET', KEYS[1], 'status', 'sellerId', 'currentPrice', 'highestBidderId') " +
+                    "if info[1] ~= 'ON_SALE' then return 'ENDED' end " +
                     "if ARGV[1] == info[2] then return 'SELF_BID' end " +
                     "if ARGV[1] == info[4] then return 'CONSECUTIVE' end " +
                     "if tonumber(ARGV[2]) <= tonumber(info[3]) then return 'LOW_PRICE' end " +
-                    "redis.call('HMSET', KEYS[1], 'currentPrice', ARGV[2], 'lastBidderId', ARGV[1]) " +
+                    "redis.call('HMSET', KEYS[1], 'currentPrice', ARGV[2], 'highestBidderId', ARGV[1]) " +
                     "return 'OK'";
 
     public BidLockFacade(RedissonClient redissonClient, BidService bidService, RedisTemplate<String, String> redisTemplate) {
