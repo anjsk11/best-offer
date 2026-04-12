@@ -11,6 +11,8 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @Component
@@ -20,11 +22,12 @@ public class BidLockFacade {
 
     private final RedissonClient redissonClient;
     private final BidService bidService;
-    private final RedisTemplate<String, String> redisTemplate; // 💡 Redis 연산을 위해 추가
+    private final RedisTemplate<String, String> redisTemplate;
 
-    // 💡 1. 레디스 비서에게 줄 "입찰 심사 매뉴얼(Lua Script)"
+    // 💡 1. LUA 스크립트 수정: 데이터가 없을 때 'NOT_FOUND'를 반환하는 방어 코드 추가
     private static final String LUA_SCRIPT =
             "local info = redis.call('HMGET', KEYS[1], 'status', 'sellerId', 'currentPrice', 'highestBidderId') " +
+                    "if not info[1] then return 'NOT_FOUND' end " + // <-- 이 부분이 없어서 계속 ENDED 에러가 났던 것입니다.
                     "if info[1] ~= 'ON_SALE' then return 'ENDED' end " +
                     "if ARGV[1] == info[2] then return 'SELF_BID' end " +
                     "if ARGV[1] == info[4] then return 'CONSECUTIVE' end " +
@@ -41,20 +44,23 @@ public class BidLockFacade {
     public void placeBidWithLock(Long auctionId, Long bidPrice, Long bidderId, LocalDateTime bidTime) {
         String auctionKey = "auction:" + auctionId + ":info";
 
-        // 💡 2. [1차 방파제] Lua 스크립트로 사전 검증 수행 (락 잡기 전에 실행)
-        String result = redisTemplate.execute(
-                new DefaultRedisScript<>(LUA_SCRIPT, String.class),
-                Collections.singletonList(auctionKey),
-                bidderId.toString(),
-                bidPrice.toString()
-        );
+        // 💡 2. Lua 스크립트 1차 실행
+        String result = executeLuaScript(auctionKey, bidderId, bidPrice);
 
-        // 💡 3. 검증 결과에 따른 예외 처리 (여기서 90%의 부적절한 요청이 걸러짐)
+        // 💡 3. 캐시가 비어있다면? DB에서 가져와서 레디스에 채우고 다시 실행 (Cache-Aside 패턴)
+        if ("NOT_FOUND".equals(result)) {
+            log.info("Redis 캐시 미스 발생. DB에서 경매 정보를 로드합니다. auctionId: {}", auctionId);
+            warmUpCache(auctionId); // 캐시 채우기
+
+            result = executeLuaScript(auctionKey, bidderId, bidPrice); // 스크립트 2차(재)실행
+        }
+
+        // 💡 4. 검증 실패 시 즉시 에러 발생 (DB로 안 넘어감)
         if (!"OK".equals(result)) {
             handleLuaError(result, auctionId);
         }
 
-        // 💡 4. [2차 관문] 검증 통과된 '진짜'들만 Redisson 락 경쟁 시작
+        // 💡 5. 통과된 요청만 분산 락 획득 후 DB 업데이트 진행
         RLock lock = redissonClient.getLock("auction_lock:" + auctionId);
 
         try {
@@ -65,7 +71,6 @@ public class BidLockFacade {
                 throw new RuntimeException("시스템에 접속자가 많아 입찰이 지연되고 있습니다. 다시 시도해주세요.");
             }
 
-            // 진짜 DB에 저장
             bidService.placeBid(auctionId, bidPrice, bidderId, bidTime);
 
         } catch (InterruptedException e) {
@@ -79,13 +84,41 @@ public class BidLockFacade {
         }
     }
 
-    // Lua 스크립트 결과에 따른 예외 메시지 분리
+    // Lua 스크립트 실행을 깔끔하게 분리한 헬퍼 메서드
+    private String executeLuaScript(String auctionKey, Long bidderId, Long bidPrice) {
+        return redisTemplate.execute(
+                new DefaultRedisScript<>(LUA_SCRIPT, String.class),
+                Collections.singletonList(auctionKey),
+                bidderId.toString(),
+                bidPrice.toString()
+        );
+    }
+
+    // 💡 핵심: 레디스에 데이터가 없을 때 DB에서 조회해 캐시를 채워주는 메서드
+    private void warmUpCache(Long auctionId) {
+        // TODO: 실제 프로젝트의 AuctionRepository 나 Service 를 통해 DB에서 경매 정보를 조회해야 합니다.
+        // Auction auction = auctionService.findById(auctionId);
+        // 아래는 DB에서 값을 정상적으로 가져왔다고 가정한 임시 하드코딩 예시입니다.
+
+        Map<String, String> auctionInfo = new HashMap<>();
+        auctionInfo.put("status", "ON_SALE");       // auction.getStatus().name()
+        auctionInfo.put("sellerId", "40");          // auction.getSellerId().toString()
+        auctionInfo.put("currentPrice", "1000");    // auction.getCurrentPrice().toString()
+        auctionInfo.put("highestBidderId", "0");    // auction.getHighestBidderId() != null ? ... : "0"
+
+        String auctionKey = "auction:" + auctionId + ":info";
+        redisTemplate.opsForHash().putAll(auctionKey, auctionInfo);
+        // 필요하다면 만료 시간 설정 (예: 1시간)
+        // redisTemplate.expire(auctionKey, 1, TimeUnit.HOURS);
+    }
+
     private void handleLuaError(String result, Long auctionId) {
         switch (result) {
             case "ENDED": throw new RuntimeException("이미 종료된 경매입니다.");
             case "SELF_BID": throw new RuntimeException("본인 경매에는 입찰할 수 없습니다.");
             case "CONSECUTIVE": throw new RuntimeException("연속으로 입찰할 수 없습니다.");
             case "LOW_PRICE": throw new RuntimeException("현재가보다 높은 금액을 입력해주세요.");
+            case "NOT_FOUND": throw new RuntimeException("경매 정보를 찾을 수 없습니다.");
             default: throw new RuntimeException("입찰 가능 여부를 확인할 수 없습니다.");
         }
     }
