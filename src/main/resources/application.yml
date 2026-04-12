@@ -16,3 +16,9 @@ management:
   metrics:
     tags:
       application: BestOffer # 그라파나 대시보드에서 식별할 이름
+
+  data:
+    redis:
+      # 운영 환경에서는 GitHub Actions Secrets나 EC2 환경변수에서 값을 주입받음
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
