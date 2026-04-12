@@ -46,6 +46,7 @@ jobs:
             sudo docker run -d --restart always --name redis-server -p 6379:6379 redis:latest
 
             # 2. 최신 스프링 부트 이미지 Pull 및 기존 컨테이너 정리
+            sudo docker system prune -f
             sudo docker pull ${{ secrets.DOCKER_USERNAME }}/bestoffer-app
             sudo docker stop bestoffer-server || true
             sudo docker rm bestoffer-server || true
