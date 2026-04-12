@@ -14,11 +14,11 @@ import java.time.LocalDateTime;
 @RequestMapping("/api/v1/auctions/{auctionId}/bids")
 public class BidController {
 
-    // private final BidService bidService;
-    private final BidLockFacade bidLockFacade;
+    private final BidService bidService;
+    // private final BidLockFacade bidLockFacade;
 
-    public BidController(BidLockFacade bidLockFacade) {
-        this.bidLockFacade = bidLockFacade;
+    public BidController( BidService bidService ) {
+        this.bidService = bidService;
     }
 
     @PostMapping
@@ -35,8 +35,8 @@ public class BidController {
         // 요청이 컨트롤러에 도달한 즉시 시간을 기록
         LocalDateTime arrivalTime = LocalDateTime.now();
 
-        // bidService.placeBid(auctionId, request.getBidPrice(), bidderId, arrivalTime);    // 분산 락 적용을 위해 대체
-        bidLockFacade.placeBidWithLock(auctionId, request.getBidPrice(), bidderId, arrivalTime);
+         bidService.placeBid(auctionId, request.getBidPrice(), bidderId, arrivalTime);    // 분산 락 적용을 위해 대체
+        // bidLockFacade.placeBidWithLock(auctionId, request.getBidPrice(), bidderId, arrivalTime);
 
         return ResponseEntity.ok("입찰이 완료되었습니다.");
     }

@@ -15,4 +15,8 @@ import java.util.Optional;
 public interface AuctionRepository extends JpaRepository<Auction,Long> {
     // ON_SALE 상태이고, 마감 시간이 현재보다 이전인 경매 찾기
     List<Auction> findByStatusAndEndTimeBefore(AuctionStatus status, LocalDateTime time);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT a FROM Auction a WHERE a.id = :id")
+    Optional<Auction> findByIdWithPessimisticLock(@Param("id") Long id);
 }
