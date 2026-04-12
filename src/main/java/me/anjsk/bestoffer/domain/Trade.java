@@ -26,11 +26,11 @@ public class Trade {
     private Long finalPrice;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 20, columnDefinition = "VARCHAR(20)")
     private PaymentStatus paymentStatus = PaymentStatus.UNPAID; // 초기값: 결제 대기
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 20, columnDefinition = "VARCHAR(20)")
     private ShippingStatus shippingStatus = ShippingStatus.PREPARING; // 초기값: 배송 준비
 
     @CreatedDate
