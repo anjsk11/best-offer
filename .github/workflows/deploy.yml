@@ -40,14 +40,23 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            # 1. Redis 컨테이너 실행 (스프링 부트보다 무조건 먼저 켜져야 함!)
+            sudo docker stop redis-server || true
+            sudo docker rm redis-server || true
+            sudo docker run -d --restart always --name redis-server -p 6379:6379 redis:latest
+
+            # 2. 최신 스프링 부트 이미지 Pull 및 기존 컨테이너 정리
             sudo docker pull ${{ secrets.DOCKER_USERNAME }}/bestoffer-app
             sudo docker stop bestoffer-server || true
             sudo docker rm bestoffer-server || true
             
-            # -e 옵션으로 RDS 정보를 컨테이너에 주입합니다.
+            # 3. 스프링 부트 실행 (Redis 연결 정보 주입)
             sudo docker run -d --restart always --name bestoffer-server \
               -p 8080:8080 \
+              --add-host host.docker.internal:host-gateway \
               -e SPRING_PROFILES_ACTIVE=prod \
+              -e REDIS_HOST=host.docker.internal \
+              -e REDIS_PORT=6379 \
               -e RDS_HOSTNAME=${{ secrets.RDS_HOSTNAME }} \
               -e RDS_DB_NAME=${{ secrets.RDS_DB_NAME }} \
               -e RDS_USERNAME=${{ secrets.RDS_USERNAME }} \
