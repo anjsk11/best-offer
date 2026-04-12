@@ -92,6 +92,7 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
+
         <!--분산 락을 위한 redisson-->
         <dependency>
             <groupId>org.redisson</groupId>
