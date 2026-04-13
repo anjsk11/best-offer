@@ -40,10 +40,10 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # 1. Redis 컨테이너 실행 (스프링 부트보다 무조건 먼저 켜져야 함!)
-            sudo docker stop redis-server || true
-            sudo docker rm redis-server || true
-            sudo docker run -d --restart always --name redis-server -p 6379:6379 redis:latest
+            #            # 1. Redis 컨테이너 실행 (스프링 부트보다 무조건 먼저 켜져야 함!)
+            #            sudo docker stop redis-server || true
+            #            sudo docker rm redis-server || true
+            #            sudo docker run -d --restart always --name redis-server -p 6379:6379 redis:latest
 
             # 2. 최신 스프링 부트 이미지 Pull 및 기존 컨테이너 정리
             sudo docker system prune -f
@@ -64,23 +64,23 @@ jobs:
               -e RDS_PASSWORD=${{ secrets.RDS_PASSWORD }} \
               ${{ secrets.DOCKER_USERNAME }}/bestoffer-app
 
-      - name: Copy monitoring files to EC2
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "monitoring/*" # 로컬(GitHub)의 monitoring 폴더 내부 파일들
-          target: "~/monitoring" # EC2의 목적지
-          strip_components: 1    # 폴더 껍데기는 벗기고 알맹이 파일만 쏙 넣음
-
-      - name: Run Monitoring Containers
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            mkdir -p ~/monitoring # 만약 폴더가 없다면 생성 (안전장치)
-            cd ~/monitoring
-            sudo docker-compose up -d
+#      - name: Copy monitoring files to EC2
+#        uses: appleboy/scp-action@master
+#        with:
+#          host: ${{ secrets.EC2_HOST }}
+#          username: ${{ secrets.EC2_USERNAME }}
+#          key: ${{ secrets.EC2_SSH_KEY }}
+#          source: "monitoring/*" # 로컬(GitHub)의 monitoring 폴더 내부 파일들
+#          target: "~/monitoring" # EC2의 목적지
+#          strip_components: 1    # 폴더 껍데기는 벗기고 알맹이 파일만 쏙 넣음
+#
+#      - name: Run Monitoring Containers
+#        uses: appleboy/ssh-action@master
+#        with:
+#          host: ${{ secrets.EC2_HOST }}
+#          username: ${{ secrets.EC2_USERNAME }}
+#          key: ${{ secrets.EC2_SSH_KEY }}
+#          script: |
+#            mkdir -p ~/monitoring # 만약 폴더가 없다면 생성 (안전장치)
+#            cd ~/monitoring
+#            sudo docker-compose up -d
