@@ -13,6 +13,7 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -30,9 +31,10 @@ public class BidLockFacade {
 
     // 캐시를 보고 입찰 예비 필터링, 데이터가 없을 때 'NOT_FOUND'를 반환하는 방어 코드 추가
     private static final String LUA_SCRIPT =
-            "local info = redis.call('HMGET', KEYS[1], 'status', 'sellerId', 'currentPrice', 'highestBidderId') " +
+            "local info = redis.call('HMGET', KEYS[1], 'status', 'sellerId', 'currentPrice', 'highestBidderId', 'endTime') " +
                     "if not info[1] then return 'NOT_FOUND' end " +
                     "if info[1] ~= 'ON_SALE' then return 'ENDED' end " +
+                    "if tonumber(ARGV[3]) > tonumber(info[5]) then return 'ENDED' end " +
                     "if ARGV[1] == info[2] then return 'SELF_BID' end " +
                     "if ARGV[1] == info[4] then return 'CONSECUTIVE' end " +
                     "if tonumber(ARGV[2]) <= tonumber(info[3]) then return 'LOW_PRICE' end " +
@@ -50,14 +52,14 @@ public class BidLockFacade {
         String auctionKey = "auction:" + auctionId + ":info";
 
         // Lua 스크립트 1차 실행
-        String result = executeLuaScript(auctionKey, bidderId, bidPrice);
+        String result = executeLuaScript(auctionKey, bidderId, bidPrice, bidTime);
 
         // 캐시가 비어있다면? DB에서 가져와서 레디스에 채우고 다시 실행 (Cache-Aside 패턴)
         if ("NOT_FOUND".equals(result)) {
             log.info("Redis 캐시 미스 발생. DB에서 경매 정보를 로드합니다. auctionId: {}", auctionId);
             warmUpCache(auctionId); // 캐시 채우기
 
-            result = executeLuaScript(auctionKey, bidderId, bidPrice); // 스크립트 2차(재)실행
+            result = executeLuaScript(auctionKey, bidderId, bidPrice, bidTime); // 스크립트 2차(재)실행
         }
 
         // 검증 실패 시 즉시 에러 발생 (DB로 안 넘어감)
@@ -78,7 +80,7 @@ public class BidLockFacade {
 
             bidService.placeBid(auctionId, bidPrice, bidderId, bidTime);
 
-        } catch (InterruptedException e) {
+        } catch (Exception e) {
             log.error("락 획득 중 스레드 인터럽트 발생", e);
             Thread.currentThread().interrupt();
 
@@ -95,12 +97,17 @@ public class BidLockFacade {
     }
 
     // Lua 스크립트 실행을 깔끔하게 분리한 헬퍼 메서드
-    private String executeLuaScript(String auctionKey, Long bidderId, Long bidPrice) {
+    private String executeLuaScript(String auctionKey, Long bidderId, Long bidPrice, LocalDateTime bidTime) {
+
+        // LocalDateTime을 비교 가능한 Long 값(밀리초)으로 변환하여 ARGV[3]으로 전달
+        long bidTimeMillis = bidTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+
         return redisTemplate.execute(
                 new DefaultRedisScript<>(LUA_SCRIPT, String.class),
                 Collections.singletonList(auctionKey),
                 bidderId.toString(),
-                bidPrice.toString()
+                bidPrice.toString(),
+                String.valueOf(bidTimeMillis)
         );
     }
 
@@ -117,6 +124,9 @@ public class BidLockFacade {
         auctionInfo.put("status", auction.getStatus().name());
         auctionInfo.put("sellerId", String.valueOf(auction.getSeller().getId()));
         auctionInfo.put("currentPrice", String.valueOf(auction.getCurrentPrice()));
+        // endTime을 숫자형(밀리초)으로 변환해서 저장해야 Lua에서 크기 비교가 가능합니다.
+        long endTimeMillis = auction.getEndTime().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+        auctionInfo.put("endTime", String.valueOf(endTimeMillis));
 
         // 핵심: 첫 입찰이라 DB에 최고입찰자가 null인 경우, 레디스에는 "0"으로 저장
         String highestBidder = (auction.getHighestBidder() != null)
