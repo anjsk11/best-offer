@@ -11,8 +11,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface AuctionRepository extends JpaRepository<Auction,Long> {
-    // ON_SALE 상태이고, 마감 시간이 현재보다 이전인 경매 찾기
-    List<Auction> findByStatusAndEndTimeBefore(AuctionStatus status, LocalDateTime time);
 
     // [이벤트 발행용 조회] 낙찰자가 있는 만료 경매만 조회 (Fetch Join으로 N+1 완벽 방지)
     @Query("SELECT a FROM Auction a " +
