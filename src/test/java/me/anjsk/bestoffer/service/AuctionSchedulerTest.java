@@ -58,53 +58,37 @@ class AuctionSchedulerTest {
     @Test
     @DisplayName("낙찰자가 있는 경우 상태 변경 및 이벤트 발행 성공")
     void closeExpiredAuctions_WithWinner_PublishesEvent() {
-        // Given: 낙찰자가 있는 상황 세팅
+        // Given
         ReflectionTestUtils.setField(auction, "highestBidder", bidder);
-        ReflectionTestUtils.setField(auction, "currentPrice", 15000L);
-
-        given(auctionRepository.findByStatusAndEndTimeBefore(eq(AuctionStatus.ON_SALE), any(LocalDateTime.class)))
+        given(auctionRepository.findSuccessfulExpiredAuctions(any(LocalDateTime.class)))
                 .willReturn(List.of(auction));
 
         // When
         auctionScheduler.closeExpiredAuctions();
 
         // Then
-        assertEquals(AuctionStatus.COMPLETED, auction.getStatus()); // 상태가 종료로 바뀌었는지 확인
-
-        // 핵심 검증: 이벤트 퍼블리셔가 '정확히 1번' 호출되었는지 확인
+        // 1. 이벤트가 발행되었는지 검증
         verify(eventPublisher, times(1)).publishEvent(any(AuctionCompletedEvent.class));
+
+        // 2. 벌크 업데이트 메서드가 호출되었는지 검증 (벌크 연산은 객체 상태를 직접 바꾸지 않으므로 호출 여부가 중요)
+        verify(auctionRepository, times(1)).bulkUpdateExpiredAuctions(any(LocalDateTime.class));
     }
 
     @Test
-    @DisplayName("낙찰자가 없는(유찰) 경우 상태만 변경하고 이벤트 발행 안 함")
-    void closeExpiredAuctions_WithoutWinner_NoEventPublished() {
-        // Given: 낙찰자가 없는(null) 상황 세팅
-        ReflectionTestUtils.setField(auction, "highestBidder", null);
-
-        given(auctionRepository.findByStatusAndEndTimeBefore(eq(AuctionStatus.ON_SALE), any(LocalDateTime.class)))
-                .willReturn(List.of(auction));
-
-        // When
-        auctionScheduler.closeExpiredAuctions();
-
-        // Then
-        assertEquals(AuctionStatus.COMPLETED, auction.getStatus()); // 상태는 무조건 종료로 바뀌어야 함
-
-        // 💡 핵심 검증: 이벤트 퍼블리셔가 '절대' 호출되지 않았음을 확인 (유찰 처리)
-        verify(eventPublisher, never()).publishEvent(any());
-    }
-
-    @Test
-    @DisplayName("마감할 경매가 없는 경우 아무 일도 일어나지 않음")
-    void closeExpiredAuctions_NoExpiredAuctions() {
-        // Given: 빈 리스트 반환
-        given(auctionRepository.findByStatusAndEndTimeBefore(eq(AuctionStatus.ON_SALE), any(LocalDateTime.class)))
+    @DisplayName("낙찰자가 없는 경우 이벤트는 발행하지 않지만 벌크 업데이트는 실행")
+    void closeExpiredAuctions_WithoutWinner_NoEvent() {
+        // Given: 낙찰자가 없는 경우, findSuccessfulExpiredAuctions는 빈 리스트를 반환한다고 가정
+        given(auctionRepository.findSuccessfulExpiredAuctions(any(LocalDateTime.class)))
                 .willReturn(Collections.emptyList());
 
         // When
         auctionScheduler.closeExpiredAuctions();
 
         // Then
+        // 1. 이벤트는 절대 발행되면 안 됨
         verify(eventPublisher, never()).publishEvent(any());
+
+        // 2. 하지만 유찰된 건들도 상태는 바뀌어야 하므로 벌크 업데이트는 호출되어야 함
+        verify(auctionRepository, times(1)).bulkUpdateExpiredAuctions(any(LocalDateTime.class));
     }
 }
