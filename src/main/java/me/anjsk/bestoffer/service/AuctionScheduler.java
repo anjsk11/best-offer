@@ -60,14 +60,14 @@ public class AuctionScheduler {
         List<Auction> successfulAuctions = auctionRepository.findSuccessfulExpiredAuctions(now);
 
         // 2. 메모리에서 루프를 돌며 이벤트 발행 (네트워크 I/O 없음)
-        for (Auction auction : successfulAuctions) {
-            eventPublisher.publishEvent(new AuctionCompletedEvent(
-                    auction.getId(),
-                    auction.getSeller(),
-                    auction.getHighestBidder(),
-                    auction.getCurrentPrice()
-            ));
-        }
+//        for (Auction auction : successfulAuctions) {
+//            eventPublisher.publishEvent(new AuctionCompletedEvent(
+//                    auction.getId(),
+//                    auction.getSeller(),
+//                    auction.getHighestBidder(),
+//                    auction.getCurrentPrice()
+//            ));
+//        }
 
         // 벌크 업데이트로 경매 완료 처리
         int updatedCount = auctionRepository.bulkUpdateExpiredAuctions(now);
