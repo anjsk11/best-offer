@@ -85,7 +85,7 @@ public class Auction {
             throw new AuctionClosedException();
         }
 
-        // 2. 본인 입찰 금지
+        // 2. 본인 경매 입찰 금지
         if (this.seller.getId().equals(bidder.getId())) {
             throw new SelfBidException();
         }
