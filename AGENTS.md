@@ -66,6 +66,7 @@ The system relies purely on **Session-Based Authentication** (`HttpSession`).
 The project has a strict CI/CD pipeline. Deployment will fail if any test breaks.
 
 - Write unit tests for all new business logic using `JUnit5` and `Mockito`.
+- Test `@DisplayName` values should be written in Korean and follow the existing scenario style, e.g. `입찰 실패 - 존재하지 않는 입찰자`, instead of English labels.
 - When modifying existing endpoints, you must also update the corresponding Controller/Service tests.
 - Maintain existing test performance and isolate DB testing environments appropriately.
 - `BestOfferApplicationTests.contextLoads` mocks `RedissonClient` so the smoke test can load the Spring context without requiring local Redis. If a future local test explicitly exercises Redis behavior and Redis is unavailable, ask the developer to manually start Redis through Docker Engine before rerunning that test.
