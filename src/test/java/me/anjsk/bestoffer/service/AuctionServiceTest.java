@@ -144,6 +144,16 @@ class AuctionServiceTest {
     }
 
     @Test
+    @DisplayName("경매 수정 실패 - 존재하지 않는 경매")
+    void updateAuction_Fail_AuctionNotFound() {
+        AuctionUpdateRequest request = new AuctionUpdateRequest("Updated Title", "Updated Description");
+        given(auctionRepository.findById(AUCTION_ID)).willReturn(Optional.empty());
+
+        assertThrows(AuctionNotFoundException.class,
+                () -> auctionService.updateAuction(AUCTION_ID, request, SELLER_ID));
+    }
+
+    @Test
     @DisplayName("경매 삭제 성공 - 상태가 DELETED로 변경됨")
     void deleteAuction_Success() {
         Auction auction = TestFixtures.auction(AUCTION_ID, seller);
@@ -163,6 +173,15 @@ class AuctionServiceTest {
         assertThrows(UnauthorizedAccessException.class,
                 () -> auctionService.deleteAuction(AUCTION_ID, OTHER_USER_ID));
         assertEquals(AuctionStatus.ON_SALE, auction.getStatus());
+    }
+
+    @Test
+    @DisplayName("경매 삭제 실패 - 존재하지 않는 경매")
+    void deleteAuction_Fail_AuctionNotFound() {
+        given(auctionRepository.findById(AUCTION_ID)).willReturn(Optional.empty());
+
+        assertThrows(AuctionNotFoundException.class,
+                () -> auctionService.deleteAuction(AUCTION_ID, SELLER_ID));
     }
 
     @Test
