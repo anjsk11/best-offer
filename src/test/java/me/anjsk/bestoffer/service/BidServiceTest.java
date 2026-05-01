@@ -4,6 +4,7 @@ import me.anjsk.bestoffer.domain.Auction;
 import me.anjsk.bestoffer.domain.Bid;
 import me.anjsk.bestoffer.domain.User;
 import me.anjsk.bestoffer.exception.AuctionNotFoundException;
+import me.anjsk.bestoffer.exception.UserNotFoundException;
 import me.anjsk.bestoffer.repository.AuctionRepository;
 import me.anjsk.bestoffer.repository.BidRepository;
 import me.anjsk.bestoffer.repository.UserRepository;
@@ -82,6 +83,18 @@ class BidServiceTest {
                 () -> bidService.placeBid(AUCTION_ID, 15_000L, BIDDER_ID, LocalDateTime.now()));
 
         verify(userRepository, never()).findById(any());
+        verify(bidRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("입찰 실패 - 존재하지 않는 입찰자")
+    void placeBid_Fail_UserNotFound() {
+        given(auctionRepository.findById(AUCTION_ID)).willReturn(Optional.of(auction));
+        given(userRepository.findById(BIDDER_ID)).willReturn(Optional.empty());
+
+        assertThrows(UserNotFoundException.class,
+                () -> bidService.placeBid(AUCTION_ID, 15_000L, BIDDER_ID, LocalDateTime.now()));
+
         verify(bidRepository, never()).save(any());
     }
 }
