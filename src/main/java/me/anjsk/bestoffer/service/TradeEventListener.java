@@ -21,7 +21,7 @@ public class TradeEventListener {
         this.tradeRepository = tradeRepository;
     }
 
-    // 스케줄러의 경매 종료 업데이트가 완전히 커밋된 후에만 실행됨
+    // closeExpiredAuctions의 경매 종료 업데이트가 완전히 커밋된 후에만 실행됨
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW) // 별도의 독립된 트랜잭션으로 저장
     public void handleAuctionCompleted(AuctionCompletedEvent event) {

@@ -3,12 +3,21 @@ package me.anjsk.bestoffer.service;
 import me.anjsk.bestoffer.domain.Auction;
 import me.anjsk.bestoffer.domain.Bid;
 import me.anjsk.bestoffer.domain.User;
-import me.anjsk.bestoffer.domain.enums.UserRole;
-import me.anjsk.bestoffer.dto.*;
-import me.anjsk.bestoffer.exception.*;
+import me.anjsk.bestoffer.domain.enums.AuctionStatus;
+import me.anjsk.bestoffer.dto.AuctionCreateRequest;
+import me.anjsk.bestoffer.dto.AuctionDetailResponse;
+import me.anjsk.bestoffer.dto.AuctionListResponse;
+import me.anjsk.bestoffer.dto.AuctionUpdateRequest;
+import me.anjsk.bestoffer.dto.BidHistoryResponse;
+import me.anjsk.bestoffer.exception.AuctionNotFoundException;
+import me.anjsk.bestoffer.exception.InvalidEndTimeException;
+import me.anjsk.bestoffer.exception.InvalidPriceException;
+import me.anjsk.bestoffer.exception.UnauthorizedAccessException;
+import me.anjsk.bestoffer.exception.UserNotFoundException;
 import me.anjsk.bestoffer.repository.AuctionRepository;
 import me.anjsk.bestoffer.repository.BidRepository;
 import me.anjsk.bestoffer.repository.UserRepository;
+import me.anjsk.bestoffer.support.TestFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,366 +25,269 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
-
-import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.*;
-
-import me.anjsk.bestoffer.domain.enums.AuctionStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
 @ExtendWith(MockitoExtension.class)
 class AuctionServiceTest {
 
-    @Mock private AuctionRepository auctionRepository;
-    @Mock private UserRepository userRepository;
-    @Mock private BidRepository bidRepository;
+    private static final Long SELLER_ID = 1L;
+    private static final Long OTHER_USER_ID = 2L;
+    private static final Long AUCTION_ID = 100L;
+
+    @Mock
+    private AuctionRepository auctionRepository;
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private BidRepository bidRepository;
 
     @InjectMocks
     private AuctionService auctionService;
 
-    private User testSeller;
-    private final Long SELLER_ID = 1L;
-    private final Long OTHER_USER_ID = 2L;
-    private final Long AUCTION_ID = 100L;
+    private User seller;
 
     @BeforeEach
     void setUp() {
-
-        testSeller = new User("test@test.com", "password", "판매자", UserRole.ROLE_USER);
-        // setId()가 없으므로 ReflectionTestUtils를 이용해 강제로 ID 주입
-        ReflectionTestUtils.setField(testSeller, "id", SELLER_ID);
+        seller = TestFixtures.user(SELLER_ID, "seller@test.com", "seller");
     }
 
     @Test
     @DisplayName("경매 등록 성공")
     void createAuction_Success() {
-        // Given
-        // 여유롭게 2시간 후로 설정
-        LocalDateTime validEndTime = LocalDateTime.now().plusHours(2);
-        AuctionCreateRequest request = new AuctionCreateRequest("맥북 프로", "A급", 1000000L, validEndTime);
+        AuctionCreateRequest request = createRequest(1_000_000L, LocalDateTime.now().plusHours(2));
+        Auction savedAuction = TestFixtures.auction(AUCTION_ID, request.getTitle(), request.getDescription(),
+                request.getStartPrice(), request.getEndTime(), seller);
 
-        given(userRepository.findById(SELLER_ID)).willReturn(Optional.of(testSeller));
-
-        Auction savedAuction = new Auction(
-                request.getTitle(), request.getDescription(),
-                request.getStartPrice(), request.getEndTime(), testSeller
-        );
-        ReflectionTestUtils.setField(savedAuction, "id", 100L); // DB에서 100번으로 저장됐다고 가정
-
+        given(userRepository.findById(SELLER_ID)).willReturn(Optional.of(seller));
         given(auctionRepository.save(any(Auction.class))).willReturn(savedAuction);
 
-        // When
         Long auctionId = auctionService.createAuction(request, SELLER_ID);
 
-        // Then
-        assertEquals(100L, auctionId); // 리턴된 ID가 100L인지 검증
-        verify(auctionRepository, times(1)).save(any(Auction.class));
+        assertEquals(AUCTION_ID, auctionId);
+        verify(auctionRepository).save(any(Auction.class));
     }
 
     @Test
     @DisplayName("경매 등록 실패 - 존재하지 않는 사용자")
     void createAuction_Fail_UserNotFound() {
-        // Given
-        LocalDateTime validEndTime = LocalDateTime.now().plusHours(2);
-        AuctionCreateRequest request = new AuctionCreateRequest("맥북 프로", "A급", 1000000L, validEndTime);
-
+        AuctionCreateRequest request = createRequest(1_000_000L, LocalDateTime.now().plusHours(2));
         given(userRepository.findById(SELLER_ID)).willReturn(Optional.empty());
 
-        // When & Then
-        assertThrows(UserNotFoundException.class, () -> {
-            auctionService.createAuction(request, SELLER_ID);
-        });
-
+        assertThrows(UserNotFoundException.class, () -> auctionService.createAuction(request, SELLER_ID));
         verify(auctionRepository, never()).save(any());
     }
 
     @Test
     @DisplayName("경매 등록 실패 - 마감 시간이 최소 허용 시간보다 짧음")
     void createAuction_Fail_InvalidEndTime() {
-        // Given
-        LocalDateTime invalidEndTime = LocalDateTime.now().minusMinutes(30);
-        AuctionCreateRequest request = new AuctionCreateRequest("맥북 프로", "A급", 1000000L, invalidEndTime);
+        AuctionCreateRequest request = createRequest(1_000_000L, LocalDateTime.now().minusMinutes(30));
+        given(userRepository.findById(SELLER_ID)).willReturn(Optional.of(seller));
 
-        given(userRepository.findById(SELLER_ID)).willReturn(Optional.of(testSeller));
-
-        // When & Then
-        assertThrows(InvalidEndTimeException.class, () -> {
-            auctionService.createAuction(request, SELLER_ID);
-        });
-
+        assertThrows(InvalidEndTimeException.class, () -> auctionService.createAuction(request, SELLER_ID));
         verify(auctionRepository, never()).save(any());
     }
 
     @Test
     @DisplayName("경매 등록 실패 - 시작 가격이 0원 미만(음수)")
     void createAuction_Fail_InvalidPrice() {
-        // Given
-        LocalDateTime validEndTime = LocalDateTime.now().plusHours(2);
-        AuctionCreateRequest request = new AuctionCreateRequest("맥북 프로", "A급", -500L, validEndTime);
+        AuctionCreateRequest request = createRequest(-500L, LocalDateTime.now().plusHours(2));
+        given(userRepository.findById(SELLER_ID)).willReturn(Optional.of(seller));
 
-        given(userRepository.findById(SELLER_ID)).willReturn(Optional.of(testSeller));
-
-        // When & Then
-        assertThrows(InvalidPriceException.class, () -> {
-            auctionService.createAuction(request, SELLER_ID);
-        });
-
+        assertThrows(InvalidPriceException.class, () -> auctionService.createAuction(request, SELLER_ID));
         verify(auctionRepository, never()).save(any());
     }
 
-    // 경매 수정 (Update) 테스트
     @Test
     @DisplayName("경매 수정 성공")
     void updateAuction_Success() {
-        // Given
-        Auction testAuction = new Auction("원래 제목", "원래 설명", 10000L, LocalDateTime.now().plusDays(1), testSeller);
-        ReflectionTestUtils.setField(testAuction, "id", AUCTION_ID);
+        Auction auction = TestFixtures.auction(AUCTION_ID, seller);
+        AuctionUpdateRequest request = new AuctionUpdateRequest("Updated Title", "Updated Description");
+        given(auctionRepository.findById(AUCTION_ID)).willReturn(Optional.of(auction));
 
-        AuctionUpdateRequest request = new AuctionUpdateRequest("수정된 제목", "수정된 설명");
-        given(auctionRepository.findById(AUCTION_ID)).willReturn(Optional.of(testAuction));
-
-        // When
         auctionService.updateAuction(AUCTION_ID, request, SELLER_ID);
 
-        // Then
-        // JPA의 더티 체킹을 믿고 엔티티의 값이 잘 바뀌었는지 직접 확인
-        assertEquals("수정된 제목", testAuction.getTitle());
-        assertEquals("수정된 설명", testAuction.getDescription());
+        assertAll(
+                () -> assertEquals("Updated Title", auction.getTitle()),
+                () -> assertEquals("Updated Description", auction.getDescription())
+        );
     }
 
     @Test
     @DisplayName("경매 수정 실패 - 작성자가 아님")
     void updateAuction_Fail_Unauthorized() {
-        // Given
-        Auction testAuction = new Auction("원래 제목", "원래 설명", 10000L, LocalDateTime.now().plusDays(1), testSeller);
-        ReflectionTestUtils.setField(testAuction, "id", AUCTION_ID);
+        Auction auction = TestFixtures.auction(AUCTION_ID, "Original Title", "Original Description",
+                10_000L, LocalDateTime.now().plusDays(1), seller);
+        AuctionUpdateRequest request = new AuctionUpdateRequest("Updated Title", "Updated Description");
+        given(auctionRepository.findById(AUCTION_ID)).willReturn(Optional.of(auction));
 
-        AuctionUpdateRequest request = new AuctionUpdateRequest("수정된 제목", "수정된 설명");
-        given(auctionRepository.findById(AUCTION_ID)).willReturn(Optional.of(testAuction));
-
-        // When & Then
-        assertThrows(UnauthorizedAccessException.class, () -> {
-            auctionService.updateAuction(AUCTION_ID, request, OTHER_USER_ID); // 다른 유저 ID 전달
-        });
-
-        // 예외가 터졌으므로 원본 데이터가 보호되었는지 확인
-        assertEquals("원래 제목", testAuction.getTitle());
+        assertThrows(UnauthorizedAccessException.class,
+                () -> auctionService.updateAuction(AUCTION_ID, request, OTHER_USER_ID));
+        assertEquals("Original Title", auction.getTitle());
     }
 
-    // 경매 삭제 (Delete) 테스트
     @Test
     @DisplayName("경매 삭제 성공 - 상태가 DELETED로 변경됨")
     void deleteAuction_Success() {
-        // Given
-        Auction testAuction = new Auction("원래 제목", "원래 설명", 10000L, LocalDateTime.now().plusDays(1), testSeller);
-        ReflectionTestUtils.setField(testAuction, "id", AUCTION_ID);
+        Auction auction = TestFixtures.auction(AUCTION_ID, seller);
+        given(auctionRepository.findById(AUCTION_ID)).willReturn(Optional.of(auction));
 
-        given(auctionRepository.findById(AUCTION_ID)).willReturn(Optional.of(testAuction));
-
-        // When
         auctionService.deleteAuction(AUCTION_ID, SELLER_ID);
 
-        // Then
-        assertEquals(AuctionStatus.DELETED, testAuction.getStatus());
+        assertEquals(AuctionStatus.DELETED, auction.getStatus());
     }
 
     @Test
     @DisplayName("경매 삭제 실패 - 작성자가 아님 (403 Forbidden)")
     void deleteAuction_Fail_Unauthorized() {
-        // Given
-        Auction testAuction = new Auction("원래 제목", "원래 설명", 10000L, LocalDateTime.now().plusDays(1), testSeller);
-        ReflectionTestUtils.setField(testAuction, "id", AUCTION_ID);
+        Auction auction = TestFixtures.auction(AUCTION_ID, seller);
+        given(auctionRepository.findById(AUCTION_ID)).willReturn(Optional.of(auction));
 
-        given(auctionRepository.findById(AUCTION_ID)).willReturn(Optional.of(testAuction));
-
-        // When & Then
-        assertThrows(UnauthorizedAccessException.class, () -> {
-            auctionService.deleteAuction(AUCTION_ID, OTHER_USER_ID); // 다른 유저 ID 전달
-        });
-
-        // 예외가 터졌으므로 원본 상태(ON_SALE)가 보호되었는지 확인
-        assertEquals(AuctionStatus.ON_SALE, testAuction.getStatus());
+        assertThrows(UnauthorizedAccessException.class,
+                () -> auctionService.deleteAuction(AUCTION_ID, OTHER_USER_ID));
+        assertEquals(AuctionStatus.ON_SALE, auction.getStatus());
     }
 
     @Test
     @DisplayName("경매 상세 조회 성공")
     void getAuction_Success() {
-        // Given
-        Long auctionId = 1L;
-        Auction auction = new Auction("맥북 프로", "A급", 1000000L,
-                LocalDateTime.now().plusHours(2), testSeller);
-        ReflectionTestUtils.setField(auction, "id", auctionId);
-        ReflectionTestUtils.setField(auction, "status", AuctionStatus.ON_SALE);
-        ReflectionTestUtils.setField(auction, "currentPrice", 1500000L);
+        Auction auction = TestFixtures.auction(AUCTION_ID, "Vintage Camera", "A grade",
+                1_000_000L, LocalDateTime.now().plusHours(2), seller);
+        TestFixtures.setCurrentPrice(auction, 1_500_000L);
+        given(auctionRepository.findById(AUCTION_ID)).willReturn(Optional.of(auction));
 
-        given(auctionRepository.findById(auctionId)).willReturn(Optional.of(auction));
+        AuctionDetailResponse response = auctionService.getAuction(AUCTION_ID);
 
-        // When
-        AuctionDetailResponse response = auctionService.getAuction(auctionId);
-
-        // Then
-        assertEquals(auctionId, response.getId());
-        assertEquals("맥북 프로", response.getTitle());
-        assertEquals("A급", response.getDescription());
-        assertEquals(1000000L, response.getStartPrice());
-        assertEquals("판매자", response.getSellerNickname());
-
-        verify(auctionRepository, times(1)).findById(auctionId);
+        assertAll(
+                () -> assertEquals(AUCTION_ID, response.getId()),
+                () -> assertEquals("Vintage Camera", response.getTitle()),
+                () -> assertEquals("A grade", response.getDescription()),
+                () -> assertEquals(1_000_000L, response.getStartPrice()),
+                () -> assertEquals(1_500_000L, response.getCurrentPrice()),
+                () -> assertEquals("seller", response.getSellerNickname())
+        );
+        verify(auctionRepository).findById(AUCTION_ID);
     }
 
     @Test
     @DisplayName("경매 상세 조회 실패 - 존재하지 않는 경매")
     void getAuction_Fail_AuctionNotFound() {
-        // Given
-        Long auctionId = 999L;
-        given(auctionRepository.findById(auctionId)).willReturn(Optional.empty());
+        given(auctionRepository.findById(AUCTION_ID)).willReturn(Optional.empty());
 
-        // When & Then
-        assertThrows(AuctionNotFoundException.class, () -> {
-            auctionService.getAuction(auctionId);
-        });
-
-        verify(auctionRepository, times(1)).findById(auctionId);
+        assertThrows(AuctionNotFoundException.class, () -> auctionService.getAuction(AUCTION_ID));
+        verify(auctionRepository).findById(AUCTION_ID);
     }
 
     @Test
     @DisplayName("경매 입찰 내역 페이징 조회 성공")
     void getBidHistory_Success() {
-        // Given
-        Long auctionId = 1L;
         PageRequest pageable = PageRequest.of(0, 10);
+        User bidder = TestFixtures.user(2L, "bidder@test.com", "bidder");
+        Auction auction = TestFixtures.auction(AUCTION_ID, seller);
+        Bid bid = TestFixtures.bid(1L, 1_500_000L, auction, bidder, LocalDateTime.now());
+        Page<Bid> bidPage = new PageImpl<>(List.of(bid), pageable, 1);
 
-        // 유저 및 경매 객체 세팅
-        User bidder = new User("bidder@test.com", "pass", "입찰자", UserRole.ROLE_USER);
-        ReflectionTestUtils.setField(bidder, "id", 2L);
+        given(auctionRepository.existsById(AUCTION_ID)).willReturn(true);
+        given(bidRepository.findBidsByAuctionId(AUCTION_ID, pageable)).willReturn(bidPage);
 
-        Auction auction = new Auction("맥북", "A급", 1000000L, LocalDateTime.now().plusHours(2), testSeller);
-        ReflectionTestUtils.setField(auction, "id", auctionId);
+        Page<BidHistoryResponse> response = auctionService.getBidHistory(AUCTION_ID, pageable);
 
-        Bid mockBid = new Bid(1500000L, auction, bidder, LocalDateTime.now().plusMinutes(10));
-        ReflectionTestUtils.setField(mockBid, "id", 1L);
-        ReflectionTestUtils.setField(mockBid, "bidTime", LocalDateTime.now());
-
-        Page<Bid> bidPage = new PageImpl<>(List.of(mockBid), pageable, 1);
-
-        // Mocking
-        given(auctionRepository.existsById(auctionId)).willReturn(true);
-        given(bidRepository.findBidsByAuctionId(auctionId, pageable)).willReturn(bidPage);
-
-        // When
-        Page<BidHistoryResponse> response = auctionService.getBidHistory(auctionId, pageable);
-
-        // Then
-        assertEquals(1, response.getTotalElements());
-        assertEquals(1, response.getContent().size());
-
-        // 💡 Record 타입 필드 검증 (소괄호 사용)
-        assertEquals(1500000L, response.getContent().get(0).bidPrice());
-        assertEquals("입찰자", response.getContent().get(0).bidderNickname());
-
-        verify(auctionRepository, times(1)).existsById(auctionId);
-        verify(bidRepository, times(1)).findBidsByAuctionId(auctionId, pageable);
+        assertAll(
+                () -> assertEquals(1, response.getTotalElements()),
+                () -> assertEquals(1, response.getContent().size()),
+                () -> assertEquals(1_500_000L, response.getContent().get(0).bidPrice()),
+                () -> assertEquals("bidder", response.getContent().get(0).bidderNickname())
+        );
+        verify(auctionRepository).existsById(AUCTION_ID);
+        verify(bidRepository).findBidsByAuctionId(AUCTION_ID, pageable);
     }
 
     @Test
     @DisplayName("경매 입찰 내역 페이징 조회 성공 - 아무도 입찰하지 않은 경우 (빈 페이지 반환)")
     void getBidHistory_Success_NoBids() {
-        // Given
-        Long auctionId = 1L;
         PageRequest pageable = PageRequest.of(0, 10);
-        Page<Bid> emptyPage = new PageImpl<>(Collections.emptyList(), pageable, 0);
+        Page<Bid> emptyPage = new PageImpl<>(List.of(), pageable, 0);
 
-        given(auctionRepository.existsById(auctionId)).willReturn(true);
-        given(bidRepository.findBidsByAuctionId(auctionId, pageable)).willReturn(emptyPage);
+        given(auctionRepository.existsById(AUCTION_ID)).willReturn(true);
+        given(bidRepository.findBidsByAuctionId(AUCTION_ID, pageable)).willReturn(emptyPage);
 
-        // When
-        Page<BidHistoryResponse> response = auctionService.getBidHistory(auctionId, pageable);
+        Page<BidHistoryResponse> response = auctionService.getBidHistory(AUCTION_ID, pageable);
 
-        // Then
-        assertEquals(0, response.getTotalElements());
-        assertEquals(0, response.getContent().size());
+        assertAll(
+                () -> assertEquals(0, response.getTotalElements()),
+                () -> assertEquals(0, response.getContent().size())
+        );
     }
 
     @Test
     @DisplayName("경매 입찰 내역 페이징 조회 실패 - 존재하지 않는 경매 ID")
     void getBidHistory_Fail_AuctionNotFound() {
-        // Given
-        Long invalidAuctionId = 999L;
         PageRequest pageable = PageRequest.of(0, 10);
+        given(auctionRepository.existsById(AUCTION_ID)).willReturn(false);
 
-        // 경매가 존재하지 않는다고 모킹
-        given(auctionRepository.existsById(invalidAuctionId)).willReturn(false);
-
-        // When & Then
-        assertThrows(AuctionNotFoundException.class, () -> {
-            auctionService.getBidHistory(invalidAuctionId, pageable);
-        });
-
-        // 💡 예외가 터졌으므로, BidRepository는 아예 호출되지 않았어야 함을 검증
+        assertThrows(AuctionNotFoundException.class,
+                () -> auctionService.getBidHistory(AUCTION_ID, pageable));
         verify(bidRepository, never()).findBidsByAuctionId(anyLong(), any());
     }
 
     @Test
     @DisplayName("경매 목록 페이징 조회 성공")
     void getAuctions_Success() {
-        // Given
         PageRequest pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "id"));
-
-        Auction auction1 = new Auction("맥북 프로", "A급", 1000000L,
-                LocalDateTime.now().plusHours(2), testSeller);
-        ReflectionTestUtils.setField(auction1, "id", 2L);
-        ReflectionTestUtils.setField(auction1, "status", AuctionStatus.ON_SALE);
-
-        Auction auction2 = new Auction("아이패드", "S급", 500000L,
-                LocalDateTime.now().plusHours(3), testSeller);
-        ReflectionTestUtils.setField(auction2, "id", 1L);
-        ReflectionTestUtils.setField(auction2, "status", AuctionStatus.ON_SALE);
-
-        List<Auction> auctions = List.of(auction1, auction2);
-        Page<Auction> auctionPage = new PageImpl<>(auctions, pageable, auctions.size());
+        Auction first = TestFixtures.auction(2L, "Vintage Camera", "A grade",
+                1_000_000L, LocalDateTime.now().plusHours(2), seller);
+        Auction second = TestFixtures.auction(1L, "Diamond", "S grade",
+                500_000L, LocalDateTime.now().plusHours(3), seller);
+        Page<Auction> auctionPage = new PageImpl<>(List.of(first, second), pageable, 2);
 
         given(auctionRepository.findAll(pageable)).willReturn(auctionPage);
 
-        // When
         Page<AuctionListResponse> response = auctionService.getAuctions(pageable);
 
-        // Then
-        assertEquals(2, response.getTotalElements());
-        assertEquals(1, response.getTotalPages());
-        assertEquals(2, response.getContent().size());
-        assertEquals("맥북 프로", response.getContent().get(0).getTitle());
-        assertEquals("아이패드", response.getContent().get(1).getTitle());
-        verify(auctionRepository, times(1)).findAll(pageable);
+        assertAll(
+                () -> assertEquals(2, response.getTotalElements()),
+                () -> assertEquals(1, response.getTotalPages()),
+                () -> assertEquals(2, response.getContent().size()),
+                () -> assertEquals("Vintage Camera", response.getContent().get(0).getTitle()),
+                () -> assertEquals("Diamond", response.getContent().get(1).getTitle())
+        );
+        verify(auctionRepository).findAll(pageable);
     }
 
     @Test
     @DisplayName("경매 목록 페이징 조회 - 결과 없음")
     void getAuctions_EmptyResult() {
-        // Given
         PageRequest pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "id"));
+        given(auctionRepository.findAll(pageable)).willReturn(new PageImpl<>(List.of(), pageable, 0));
 
-        Page<Auction> emptyPage = new PageImpl<>(List.of(), pageable, 0);
-        given(auctionRepository.findAll(pageable)).willReturn(emptyPage);
-
-        // When
         Page<AuctionListResponse> response = auctionService.getAuctions(pageable);
 
-        // Then
-        assertEquals(0, response.getTotalElements());
-        assertEquals(0, response.getTotalPages());
-        assertEquals(0, response.getContent().size());
-        verify(auctionRepository, times(1)).findAll(pageable);
+        assertAll(
+                () -> assertEquals(0, response.getTotalElements()),
+                () -> assertEquals(0, response.getTotalPages()),
+                () -> assertEquals(0, response.getContent().size())
+        );
+        verify(auctionRepository).findAll(pageable);
+    }
+
+    private AuctionCreateRequest createRequest(Long startPrice, LocalDateTime endTime) {
+        return new AuctionCreateRequest("Vintage Camera", "A grade", startPrice, endTime);
     }
 }

@@ -68,7 +68,7 @@ The project has a strict CI/CD pipeline. Deployment will fail if any test breaks
 - Write unit tests for all new business logic using `JUnit5` and `Mockito`.
 - When modifying existing endpoints, you must also update the corresponding Controller/Service tests.
 - Maintain existing test performance and isolate DB testing environments appropriately.
-- Current full `mvn test` context loading requires Redis at `localhost:6379` because `RedissonConfig` creates a real `RedissonClient`. If Redis is not running, `BestOfferApplicationTests.contextLoads` fails even when isolated service/domain tests pass. When testing locally and Redis is unavailable, ask the developer to manually start Redis through Docker Engine before rerunning the suite. Prefer mocking or test-profile conditioning Redisson for future test reliability.
+- `BestOfferApplicationTests.contextLoads` mocks `RedissonClient` so the smoke test can load the Spring context without requiring local Redis. If a future local test explicitly exercises Redis behavior and Redis is unavailable, ask the developer to manually start Redis through Docker Engine before rerunning that test.
 
 ## Current Domain Models (Key Entities)
 
