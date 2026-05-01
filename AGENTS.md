@@ -99,6 +99,8 @@ The project has a strict CI/CD pipeline. Deployment will fail if any test breaks
 2. **Commit & Push**: Work on your feature branch, commit your changes, and push the branch to the remote repository.
    - Command: `git push origin feature/<feature-name>`
 3. **Pull Request (PR)**: Do NOT merge your own branch. The human developer (Owner) will review the code and manually merge the PR into `develop`.
+4. **After PR Completion**: When the developer says the PR is complete/merged, switch back to `develop` and pull the latest changes.
+   - Commands: `git checkout develop` then `git pull origin develop`
 
 ## Commit Message Convention
 
